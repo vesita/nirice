@@ -60,7 +60,9 @@ layout {
         proportion 0.66667
     }
 
-    default-column-width { proportion 0.5; }
+    // 刻意不设置 default-column-width：保持 niri 原生行为（新窗口用应用首选宽度），
+    // 需要固定默认宽度时再自行取消注释：
+    // default-column-width { proportion 0.5; }
 
     struts {}
 }

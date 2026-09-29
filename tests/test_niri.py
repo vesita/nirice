@@ -2,10 +2,29 @@
 
 from __future__ import annotations
 
+import shutil
+import subprocess
 from pathlib import Path
+
+import pytest
 
 from nirice.niri import ANIMATION_PRESETS, NiriController
 from nirice.niri.catalog import MANAGED_FRAGMENTS
+
+
+def _binding_combos(text: str) -> list[str]:
+    """提取 binds 块中每个绑定的规范化按键组合（排序修饰键）。"""
+    body = text.split("binds {", 1)[1].rsplit("}", 1)[0]
+    combos: list[str] = []
+    for raw in body.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("//") or "{" not in line:
+            continue
+        # 形式为 `Mod+X <可选选项> { action; }`，取第一段即按键组合
+        keys = line.split("{", 1)[0].strip().split()
+        if keys:
+            combos.append("+".join(sorted(part.upper() for part in keys[0].split("+"))))
+    return combos
 
 
 def _controller(xdg: dict[str, Path]) -> NiriController:
@@ -44,6 +63,37 @@ def test_animation_presets_are_valid_kdl_blocks() -> None:
     for preset in ANIMATION_PRESETS.values():
         assert preset.animations_kdl.strip().startswith("animations {")
         assert preset.animations_kdl.strip().endswith("}")
+
+
+def test_keybinds_have_no_duplicate_combinations() -> None:
+    """niri 中修饰键顺序无意义，Mod+A+B 与 Mod+B+A 是同一个键，必须查重。"""
+    combos = _binding_combos(MANAGED_FRAGMENTS["keybinds.kdl"])
+    assert len(combos) > 50, f"应解析出大量绑定，实际 {len(combos)}"
+    duplicates = sorted({c for c in combos if combos.count(c) > 1})
+    assert not duplicates, f"存在重复的按键组合: {duplicates}"
+
+
+def test_default_column_width_is_not_forced() -> None:
+    """刻意不设置 default-column-width，保持 niri 原生开窗宽度。"""
+    layout = MANAGED_FRAGMENTS["layout.kdl"]
+    assert "preset-window-heights" in layout
+    active = [ln for ln in layout.splitlines() if ln.strip().startswith("default-column-width")]
+    assert not active, "default-column-width 只应以注释形式存在"
+
+
+@pytest.mark.skipif(shutil.which("niri") is None, reason="需要已安装 niri 才能做真实语法校验")
+def test_keybinds_pass_real_niri_validate(tmp_path: Path) -> None:
+    """用 niri 自己的解析器验证快捷键块 —— 重复绑定就是被它抓出来的。"""
+    config = tmp_path / "config.kdl"
+    config.write_text(MANAGED_FRAGMENTS["keybinds.kdl"], encoding="utf-8")
+
+    result = subprocess.run(
+        ["niri", "validate", "-c", str(config)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout
 
 
 def test_fragment_write_diff_and_idempotence(xdg: dict[str, Path]) -> None:

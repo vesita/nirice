@@ -29,22 +29,35 @@ KITTY_AESTHETIC_CONF = """# Kitty aesthetics — managed by nirice
 # 修改后运行 `nirice terminal set-kitty <palette>` 会被覆盖。
 
 # ────────────── 字体与排版 ──────────────
-# 显式指定 Nerd Font：monospace 别名在 CachyOS 上会解析到
-# Noto Sans Mono CJK，导致 ASCII 被按全角宽度渲染（双倍字距的稀疏感）。
-font_family      MesloLGS Nerd Font
+# 必须显式指定终端字体。kitty 的默认值 font_family=monospace 在 CachyOS 上
+# 会落到 Noto Sans Mono CJK：它的拉丁字形按 CJK 字体的半宽设计，
+# ASCII 步进只有 0.500em（MesloLGS 是 0.602em），笔画偏细、字面偏小，
+# 于是整屏文字显得又挤又不匀 —— 这就是"字距不合理"的来源。
+#
+# 用 Mono 变体：Nerd Fonts 官方推荐在终端里使用 Mono，
+# 它把图标也强制成单格宽，胶囊提示符里的图标才能和文字对齐。
+font_family      MesloLGS Nerd Font Mono
 bold_font        auto
 italic_font      auto
 bold_italic_font auto
-# CJK 回退：MesloLGS 不含汉字，缺失字形才落到这里，不影响 ASCII 宽度。
-font_family      Noto Sans Mono CJK SC
-font_family      Noto Sans Mono CJK JP
 font_size        11.5
-adjust_line_height 105%
-adjust_column_width 100%
+#
+# ⚠️ 不要重复写 font_family 来做回退！kitty 的 font_family 是单个 FontSpec，
+#    多行时**只有最后一行生效**，写了 CJK 回退反而会把主字体换成 CJK 字体。
+#    kitty 对缺失字形（汉字、Emoji）会自动通过 fontconfig 回退，无需手写。
+
+# ────────────── 字距与行距（kitty 0.49+ 的新写法）──────────────
+# 注意：kitty 没有 letter_spacing 选项，横向字距的唯一旋钮就是 cell_width。
+#   cell_width 100%   → 使用字体原生步进（默认，推荐起点）
+#   cell_width 96%    → 更紧凑
+#   cell_width 105%   → 更疏朗
+#   cell_height 105%  → 行距略放松，长时间阅读更舒服
+modify_font cell_width 100%
+modify_font cell_height 105%
 disable_ligatures never
 
-# Nerd Font 图标锁定主字体，避免回退字体把图标拉宽。
-symbol_map U+E000-U+F8FF,U+F0000-U+FFFFD,U+100000-U+10FFFD MesloLGS Nerd Font
+# 图标锁定主字体，避免 CJK 回退字体抢走 Nerd Font 码位。
+symbol_map U+E000-U+F8FF,U+F0000-U+FFFFD,U+100000-U+10FFFD MesloLGS Nerd Font Mono
 
 # ────────────── 窗口与磨砂毛玻璃 ──────────────
 # 透明度由 kitty 负责；背景模糊由 niri 的 window-rule background-effect 完成

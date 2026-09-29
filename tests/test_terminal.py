@@ -52,6 +52,31 @@ def test_aesthetics_contain_no_colors() -> None:
         assert forbidden not in aesthetic, f"美学层不应包含 {forbidden!r}"
 
 
+def test_kitty_font_and_spacing_use_modern_options() -> None:
+    """kitty 0.49 弃用了 adjust_*，且必须显式指定终端字体。"""
+    aesthetic = render_kitty_aesthetics()
+
+    assert "adjust_column_width" not in aesthetic, "adjust_column_width 已被 kitty 弃用"
+    assert "adjust_line_height" not in aesthetic, "adjust_line_height 已被 kitty 弃用"
+    assert "modify_font cell_width 100%" in aesthetic
+    assert "modify_font cell_height 105%" in aesthetic
+
+    # 不显式指定字体就会落到 monospace → Noto Sans Mono CJK（ASCII 步进仅 0.5em）
+    assert "font_family      MesloLGS Nerd Font Mono" in aesthetic
+    assert "font_family      monospace" not in aesthetic
+    # kitty 的 font_family 是单个 FontSpec，多行时只有最后一行生效，
+    # 因此绝不能靠重复写 font_family 来做 CJK 回退。
+    assert aesthetic.count("font_family      ") == 1, "font_family 只能出现一次"
+
+
+def test_tab_bar_is_pinned_to_top() -> None:
+    """kitty 默认 tab_bar_edge 是 bottom，必须显式改成 top。"""
+    aesthetic = render_kitty_aesthetics()
+    assert "tab_bar_edge top" in aesthetic
+    assert "tab_bar_edge bottom" not in aesthetic
+    assert "tab_bar_style powerline" in aesthetic
+
+
 def test_kitty_conf_includes_are_mode_dependent() -> None:
     with_noctalia = render_kitty_conf(use_noctalia=True)
     assert "include nirice.conf" in with_noctalia

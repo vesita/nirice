@@ -99,8 +99,10 @@ binds {
     Mod+Equal                     { set-column-width "+10%"; }
     Mod+Shift+Minus               { set-window-height "-10%"; }
     Mod+Shift+Equal               { set-window-height "+10%"; }
-    Mod+Ctrl+Shift+Up             { switch-preset-window-height; }
-    Mod+Ctrl+Shift+Down           { reset-window-height; }
+    // 注意：niri 里修饰键顺序无意义，Mod+Ctrl+Shift+X 与 Mod+Shift+Ctrl+X 是同一个键。
+    // 因此窗高预设不能用 Up/Down（已被多显示器移动占用），改用 R 系列。
+    Mod+Ctrl+Shift+R              { switch-preset-window-height; }
+    Mod+Alt+R                     { reset-window-height; }
 
     // ─── 布局：居中与侧边对齐 ───
     // niri 是滚动平铺模型，"对齐侧边" = 先设宽 50% 再移动到条带最左/最右
