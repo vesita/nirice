@@ -70,7 +70,7 @@ binds {
     Mod+J                         hotkey-overlay-title="同列下一个窗口" { focus-window-down; }
 
     // ─── 布局：最大化与对齐 ───
-    Mod+R                         hotkey-overlay-title="最大化 / 还原当前列" { maximize-column; }
+    Mod+R                         hotkey-overlay-title="循环列宽 1/3 → 1/2 → 2/3 → 全宽" { switch-preset-column-width; }
     Mod+C                         hotkey-overlay-title="当前列居中" { center-column; }
     Mod+Z                         hotkey-overlay-title="当前列靠左" { move-column-to-first; }
     Mod+X                         hotkey-overlay-title="当前列靠右" { move-column-to-last; }

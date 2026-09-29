@@ -51,10 +51,12 @@ layout {
     // 保持透明以便 Noctalia 绘制壁纸
     background-color "transparent"
 
+    // Mod+R 按这个顺序循环；最后一档是全宽，等效于最大化
     preset-column-widths {
         proportion 0.33333
         proportion 0.5
         proportion 0.66667
+        proportion 1.0
     }
 
     preset-window-heights {

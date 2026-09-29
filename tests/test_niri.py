@@ -90,8 +90,8 @@ def test_keybinds_meet_user_requirements() -> None:
 
     assert "Mod+T" in binds and 'spawn "kitty"' in binds
     assert "Mod+Q" in binds and "close-window" in binds
-    # Mod+R 要的是"最大化窗口"，不是循环列宽
-    assert actions["Mod+R"] == "maximize-column"
+    # Mod+R 循环预设列宽，最后一档是全宽（等效最大化）
+    assert actions["Mod+R"] == "switch-preset-column-width"
     assert "Mod+D" in binds and "panel-toggle launcher" in binds
     assert "Mod+V" in binds and "panel-toggle clipboard" in binds
     assert "focus-workspace-up" in binds and "focus-workspace-down" in binds
@@ -193,6 +193,17 @@ def test_default_column_width_is_not_forced() -> None:
     assert "preset-window-heights" in layout
     active = [ln for ln in layout.splitlines() if ln.strip().startswith("default-column-width")]
     assert not active, "default-column-width 只应以注释形式存在"
+
+
+def test_preset_column_widths_end_at_full_width() -> None:
+    """Mod+R 的最后一档必须是全宽，否则会感觉缺了档位、也没有最大化。"""
+    layout = MANAGED_FRAGMENTS["layout.kdl"]
+    block = layout.split("preset-column-widths {", 1)[1].split("}", 1)[0]
+    proportions = [float(ln.split()[1]) for ln in block.splitlines() if ln.strip().startswith("proportion")]
+
+    assert len(proportions) >= 3, f"档位太少: {proportions}"
+    assert proportions == sorted(proportions), f"档位应从小到大排列: {proportions}"
+    assert proportions[-1] == 1.0, f"最后一档应为全宽（等效最大化）: {proportions}"
 
 
 @pytest.mark.skipif(shutil.which("niri") is None, reason="需要已安装 niri 才能做真实语法校验")

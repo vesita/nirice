@@ -154,7 +154,7 @@ uv run nirice snapshot load snapshots/my-rice.pmz --install-deps
 | 导航 | `Mod+G` | 聚焦上一个窗口 |
 | 导航 | `Mod+K` | 同列上一个窗口 |
 | 导航 | `Mod+J` | 同列下一个窗口 |
-| 布局 | `Mod+R` | 最大化 / 还原当前列 |
+| 布局 | `Mod+R` | 循环列宽 1/3 → 1/2 → 2/3 → 全宽 |
 | 布局 | `Mod+C` | 当前列居中 |
 | 布局 | `Mod+Z` | 当前列靠左 |
 | 布局 | `Mod+X` | 当前列靠右 |
