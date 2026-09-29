@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from nirice.noctalia import NoctaliaController
@@ -11,6 +12,7 @@ from nirice.terminal.prompt import (
     CAPSULE_PRESETS,
     DEFAULT_CAPSULE,
     _palette_refs,
+    generate_fastfetch_config,
     generate_starship_config,
 )
 
@@ -236,3 +238,18 @@ def test_ink_preset_is_safe_across_palette_sources() -> None:
     for mode, refs in sources.items():
         ratio = _contrast(refs[style.ink], refs[style.pill])
         assert ratio >= style.min_contrast, f"ink 在 nirice {mode} 调色板下对比度仅 {ratio:.2f}"
+
+
+def test_fastfetch_config_fits_narrow_column() -> None:
+    """fastfetch 看板必须在 niri 的默认列宽（工作区一半，约 73 列）内不折行。
+
+    CPU / GPU 的默认输出带频率与核心数，会把整块从 69 列撑到 87 列而折行 ——
+    一折行，左侧 logo 就被挤乱，正是「logo 显示不好看」的根因。
+    """
+    cfg = json.loads(generate_fastfetch_config(TERMINAL_PALETTES["nord-light"]))
+    modules = {m["type"]: m for m in cfg["modules"] if isinstance(m, dict)}
+
+    assert modules["cpu"]["format"] == "{1}", "CPU 只应显示型号名，否则折行"
+    assert modules["gpu"]["format"] == "{1} {2}", "GPU 只应显示品牌与型号，否则折行"
+    assert all("keyColor" in m for m in modules.values()), "每个模块都该有自己的配色"
+    assert cfg["logo"]["type"] == "small", "logo 必须是内置小号，否则左栏过宽"

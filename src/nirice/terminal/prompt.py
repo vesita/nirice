@@ -233,9 +233,22 @@ def extract_noctalia_palette_block(text: str) -> str:
 
 
 def generate_fastfetch_config(palette: TerminalPalette) -> str:
-    """生成匹配调色板色彩的极简美观 Fastfetch config.jsonc 配置文件。"""
+    """生成匹配调色板色彩的极简美观 Fastfetch config.jsonc 配置文件。
+
+    宽度是硬约束：niri 新建列的默认宽度是工作区的一半，在 1920×1080 / 1.25 缩放下
+    约等于 73 列。默认的 CPU / GPU 输出带频率与核心数，整块会到 87 列而折行，
+    一折行左侧 logo 就被挤乱，因此这两个模块只取型号名，压到 69 列。
+    """
     key_color = "cyan" if palette.is_dark else "blue"
     title_color = "blue" if palette.is_dark else "cyan"
+
+    # 逐模块着色，让键名列呈现一条彩虹而不是整块单色。
+    # 只用浅色主题下对比度足够的四个色（blue 3.70 / green 4.26 / yellow 4.29 / cyan 4.35）。
+    accents = ("blue", "cyan", "green", "yellow")
+    pending = list(accents) * 4
+
+    def spec(kind: str, key: str, **extra: str) -> dict[str, str]:
+        return {"type": kind, "key": key, "keyColor": pending.pop(0), **extra}
 
     config = {
         "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
@@ -244,7 +257,7 @@ def generate_fastfetch_config(palette: TerminalPalette) -> str:
             "padding": {
                 "top": 1,
                 "left": 2,
-                "right": 3,
+                "right": 2,
             },
         },
         "display": {
@@ -257,56 +270,18 @@ def generate_fastfetch_config(palette: TerminalPalette) -> str:
         "modules": [
             "title",
             "separator",
-            {
-                "type": "os",
-                "key": "OS",
-                "format": "{3} {12}",
-            },
-            {
-                "type": "host",
-                "key": "Host",
-            },
-            {
-                "type": "kernel",
-                "key": "Kernel",
-            },
-            {
-                "type": "uptime",
-                "key": "Uptime",
-            },
-            {
-                "type": "wm",
-                "key": "WM",
-                "format": "{2} ({3})",
-            },
-            {
-                "type": "theme",
-                "key": "Theme",
-            },
-            {
-                "type": "icons",
-                "key": "Icons",
-            },
-            {
-                "type": "terminal",
-                "key": "Term",
-            },
-            {
-                "type": "terminalfont",
-                "key": "Font",
-            },
-            {
-                "type": "cpu",
-                "key": "CPU",
-            },
-            {
-                "type": "gpu",
-                "key": "GPU",
-            },
-            {
-                "type": "memory",
-                "key": "Memory",
-            },
+            spec("os", "OS", format="{3} {12}"),
+            spec("host", "Host"),
+            spec("kernel", "Kernel"),
+            spec("uptime", "Uptime"),
+            spec("wm", "WM", format="{2} ({3})"),
+            spec("theme", "Theme"),
+            spec("icons", "Icons"),
+            spec("terminal", "Term"),
+            spec("terminalfont", "Font"),
+            spec("cpu", "CPU", format="{1}"),
+            spec("gpu", "GPU", format="{1} {2}"),
+            spec("memory", "Memory"),
             "break",
             "colors",
         ],
