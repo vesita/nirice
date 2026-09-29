@@ -1,144 +1,218 @@
-# krice (KDE Plasma 6 & Niri Wayland Rice Toolkit)
+# nirice
 
-**krice** 是专为 **CachyOS / Arch Linux + KDE Plasma 6 & Niri (Wayland)** 量身定制的全维度桌面美化（Rice）、终端全生态调色联动、物理流体动效调优、双桌面工作流与跨设备配置无损迁移工具箱。
+**nirice** 是面向 **CachyOS / Arch Linux + Niri (Wayland) + Noctalia** 的桌面美化（Rice）与配置管理工具箱：Niri 合成器配置、Noctalia 外壳主题联动、终端与 Shell 生态、跨机器迁移，全部收在一条 CLI 里。
+
+> 名字来源于 **niri + rice**。项目早期基于 KDE Plasma，现已**彻底移除全部 KDE / KWin / Plasma 代码**。
+
+---
+
+## 🎯 设计原则
+
+**能交给软件自动完成的，绝不手写。**
+
+这是整个项目最重要的约束，具体表现为：
+
+| 领域 | 谁负责 | 为什么 |
+| --- | --- | --- |
+| kitty / starship / niri / GTK / Qt 的**配色** | **Noctalia 官方主题模板** | 换主题/换壁纸时全生态自动联动，不会出现「一半新配色一半旧配色」 |
+| kitty 的**排版 / 磨砂 / Tab / 快捷键** | nirice | 模板只负责颜色，美学层需要显式管理 |
+| Niri 的**快捷键 / 动效 / 布局 / 规则** | nirice | 属于用户意图，不应被主题系统覆盖 |
+| 显示器输出 `display.kdl` | **用户自己** | 与硬件绑定，nirice 只在文件缺失时生成，绝不覆盖 |
+| Noctalia 状态栏位置 / 主题 / 模板开关 | nirice 写入 `settings.toml`，Noctalia 生效 | 走官方配置层，不做逆向修改 |
+
 ---
 
 ## 🌟 核心能力
 
-1. **🎨 桌面视觉主题全链路编排 (`krice theme`)**：
-   - **全面覆盖 KDE Plasma 6 核心要素**：全局外观（Look & Feel）、配色方案（Color Schemes）、Plasma 桌面面板样式（Panel/Bar）、Qt6 控件引擎（Breeze / Kvantum / Fusion）、Kvantum SVG 主题、窗口装饰（org.kde.breeze 亚像素精准渲染 / Klassy）、图标（Icons）、鼠标指针（Cursors）、系统字体（Fonts）、开机欢迎屏幕（Splash）与 GTK 3/4 样式统一联动。
-   - **智能调色板提取**：实时从当前 KDE 配色中提取色彩模型（背景色、前景色、强调蓝、选区高亮色），并支持一键反向注入多终端。
+1. **🪟 Niri 合成器全托管（`nirice niri`）**
+   分片式配置（`config.kdl` + `cfg/*.kdl`）统一生成与校验、热重载、显示器/工作区实时查询、动效方案切换、快捷键导出与微调。
 
-2. **💻 Kitty 终端与 Shell 提示符全生态联动 (`krice terminal`)**：
-   - **Kitty 终端一等公民支持**：包含 GPU 加速渲染、顶部斜切 Powerline Tab（Slanted Tabs）、`0.78` 浅亮色半透明磨砂亚克力毛玻璃（Frosted Acrylic Blur）、天然内边距与实时透明度调节快捷键（`Ctrl+Shift+O` / `Ctrl+Shift+U`）。
-   - **精准字体排版**：明确指定官方 `MesloLGS Nerd Font`（11.5pt），彻底根除因 `monospace` 别名解析至中日韩 CJK 字体引起的英文字符双倍宽字距/稀疏 bug。
-   - **Shell 现代化工作目录胶囊提示符**：自动生成与配色匹配的 **Starship** 现代化工作目录胶囊（Directory Pill）、Git 状态与执行耗时指示器，以及 **Fastfetch** 系统硬件看板。
+2. **🧩 Noctalia 外壳联动（`nirice shell`）**
+   状态栏位置切换、内置配色与明暗模式、面板开关，以及**主题模板编排** —— 一条命令让 kitty / starship / niri / GTK3 / GTK4 / alacritty 的配色随外壳主题自动渲染。
 
-3. **⚡ 物理流体与高刷动效调优 (`krice motion`)**：
-   - **消除 60Hz 帧步进滞后感**：动效缩放因子校准至 `0.50x`，配合 150ms 弹簧缩放与 `92% -> 100%` Ease-Out 弹出曲线。
-   - **非激活窗口微暗（Dim Inactive）**：开启 10% 柔和失焦暗化，窗口层级与焦点切换清晰顺滑。
-   - **缩略图网格切换器（Thumbnail Grid）**：开启现代缩略图网格任务切换器，替代传统卡片。
-   - **硬件级背景毛玻璃**：KWin 合成器模糊强度（BlurStrength）调优至 `12`，亚克力质感深邃通透。
+3. **💻 终端与 Shell 生态（`nirice terminal`）**
+   Kitty 美学层（MesloLGS Nerd Font + 0.78 磨砂透明 + 圆角药丸 Tab + 分屏快捷键）、Starship 胶囊提示符布局、Fastfetch 看板；Alacritty / Ghostty / Foot / WezTerm / Zellij 优先交给 Noctalia 模板，Noctalia 缺席时自动回退到内置调色板（18 套，含 Nord / Catppuccin / Tokyo Night / Dracula / Gruvbox / Solarized）。
 
-4. **📦 跨机器配置打包、无损还原与双桌面迁移 (`krice snapshot` / `krice install`)**：
-   - **精准打包范围**：全面覆盖 **KDE Plasma 6 全要素、Niri 滚动平铺合成器、Waybar 侧边坞、Fuzzel 启动器、Orchis 主题套件、Kitty 终端、Starship 提示符与 Fish/Zsh/Bash Shell 配置、本地字体与指针图标**，生成单一便携快照（`.pmz`）。
-   - **内嵌智能安装器与依赖自愈**：目标机器若缺少 Kitty、Starship、Niri、Waybar、MesloLGS Nerd Font 或 Shell Hook，运行 `krice install --all` 或 `krice snapshot load --install-deps` 即可全自动一键补齐所有软件包、字体并无损还原桌面资产！
+4. **📦 跨机器打包与还原（`nirice snapshot`）**
+   把 Niri 分片、Noctalia 设置（含状态栏位置与模板开关）、终端与 Shell 配置打成单一 `.pmz`，在新机器上 `--install-deps` 一键补齐依赖并还原，随后自动热重载 Niri / Noctalia / Kitty。
 
-5. **🏥 系统健康诊断与工具链审计 (`krice doctor` / `krice status`)**：
-   - 实时诊断 Wayland 会话、KWin 动效参数、已安装终端、字体有效性与三大 Shell（Fish / Zsh / Bash）的前缀提示符挂钩状态。
+5. **🚚 KDE → Niri 迁移（`nirice migrate`）**
+   检测 KDE 残留软件包与配置、找出缺失的 Niri 生态组件（门户后端、密钥环、指针主题、dconf 主题…），生成分阶段可执行计划。**卸载 KDE 属于不可逆操作，nirice 只输出命令，绝不自动执行。**
+
+6. **🏥 健康诊断（`nirice doctor` / `nirice status`）**
+   依赖审计、Nerd Font 检测、Shell 挂钩状态，以及 Niri / Noctalia / 终端的一体化状态看板。
 
 ---
 
-## 🚀 常用指令速查
+## 🚀 快速开始
 
-在项目根目录下通过 `uv run` 即可直接执行：
+项目使用 [uv](https://docs.astral.sh/uv/) 管理：
 
-### 1. 系统诊断与环境检查
 ```bash
-# 查看当前 KDE 桌面主题、动效与终端集成总览看板
-uv run krice status
+git clone <repo> && cd nirice
+uv sync                      # 创建 .venv 并安装依赖
 
-# 全面诊断工具链依赖、Nerd Fonts 字体与 Shell 挂钩健康状态
-uv run krice doctor
+uv run nirice --help
+uv run nirice status         # 桌面状态总览
+uv run nirice doctor         # 依赖与字体健康诊断
+uv run nirice install --all  # 自动补齐缺失依赖
 ```
 
-### 2. 内嵌安装器（通过包管理器补齐依赖与配置 Shell 提示符）
-```bash
-# 一键通过系统包管理器安装所有缺失软件包并自动配置 Shell 提示符
-uv run krice install --all
+也可以直接安装为全局命令：`uv tool install .`
 
-# 仅在 fish、zsh、bash 中注入 Starship 工作目录前缀提示符挂钩
-uv run krice install --hooks
+---
+
+## 📖 常用命令
+
+### 全局状态与诊断
+```bash
+uv run nirice status          # Niri / Noctalia / 终端状态看板
+uv run nirice doctor          # 依赖、字体与 Shell 挂钩诊断
+uv run nirice install --all   # 安装全部缺失依赖并配置 Shell 挂钩
+uv run nirice install --hooks # 只注入 Starship 提示符挂钩
 ```
 
-### 3. 全局桌面方案一键切换 (KDE + Kitty + Shell + 动效)
+### Niri 合成器
 ```bash
-# 查看所有预设的全局美化方案 (cachy-nord, catppuccin-latte, tokyo-night...)
-uv run krice theme list
-
-# 一键应用 CachyOS Nord 风格 (全套 KDE + Kitty + Starship + Fastfetch + 动效)
-uv run krice theme apply cachy-nord
-
-# 应用 Catppuccin 浅色奶油风格
-uv run krice theme apply catppuccin-latte
+uv run nirice niri diff                       # 对比磁盘现状与预设，看哪些片段被本地改过
+uv run nirice niri apply                      # 写入全部受管配置片段并热重载
+uv run nirice niri apply --no-keybinds        # 保留你自己的 keybinds.kdl
+uv run nirice niri apply --animation snappy   # 同时切换动效方案
+uv run nirice niri animations                 # 列出动效方案（arctic / snappy / silky / instant）
+uv run nirice niri keybinds --dump ./my.kdl   # 导出快捷键配置自行微调
+uv run nirice niri check                      # niri validate 语法校验
+uv run nirice niri outputs                    # 显示器与分辨率
+uv run nirice niri workspaces                 # 工作区状态
 ```
 
-### 4. Kitty 终端与 Shell 提示符管理
+### Noctalia 外壳
 ```bash
-# 查看所有 16 色 ANSI 调色板
-uv run krice terminal list
-
-# 从当前 KDE 桌面活动配色中智能提取并一键同步所有终端
-uv run krice terminal sync
-
-# 单独为 Kitty 应用浅色调色板（保持半透明磨砂毛玻璃与斜切 Tab）
-uv run krice terminal set-kitty nord-light
-uv run krice terminal set-kitty catppuccin-latte
-
-# 单独为 Starship 提示符应用配色
-uv run krice terminal set-starship nord-light
+uv run nirice shell status                    # 外壳状态
+uv run nirice shell bar position left         # 把状态栏移到左侧（top/bottom/left/right）
+uv run nirice shell theme Nord --mode light   # 切换配色与明暗模式
+uv run nirice shell templates list            # 列出可用模板与启用状态
+uv run nirice shell templates enable          # 自动检测已安装软件并启用模板
+uv run nirice shell templates apply           # 按当前主题重新渲染全部模板
 ```
 
-#### 💡 Kitty 常用快捷键：
-- **`Ctrl + Shift + T`**：新建 Tab
-- **`Ctrl + Shift + W`**：关闭当前 Tab
-- **`Ctrl + Shift + Left / Right`**：左右切换 Tab
-- **`Ctrl + Shift + 1 ~ 5`**：快速直达指定 Tab
-- **`Ctrl + Shift + Enter`**：垂直分屏（Vertical Split）
-- **`Ctrl + Shift + D`**：水平分屏（Horizontal Split）
-- **`Ctrl + Shift + H / J / K / L`**：分屏方向导航
-- **`Ctrl + Shift + O`**：**实时减小不透明度（更透亮 / 玻璃感更强）**
-- **`Ctrl + Shift + U`**：**实时增大不透明度（字更实）**
-- **`Ctrl + Shift + Delete`**：恢复默认推荐透明度 (`0.78`)
-
-### 5. 动效管理与调优
+### 终端
 ```bash
-# 查看动效预设方案
-uv run krice motion list
-
-# 启用 Denial 风格流体物理缩放
-uv run krice motion apply denial
-
-# 设置动画缩放因子 (0.50x 为高刷极速流体，1.0x 为默认速度)
-uv run krice motion set-factor 0.50
-
-# 设置 Alt+Tab 任务切换器为缩略图网格
-uv run krice motion set-switcher thumbnail_grid
+uv run nirice terminal list                   # 列出内置回退调色板
+uv run nirice terminal set-kitty              # 写入 Kitty 美学层（配色由 Noctalia 提供）
+uv run nirice terminal set-kitty nord-light --no-noctalia   # 强制使用内置调色板
+uv run nirice terminal apply nord-light       # 全终端同步
+uv run nirice terminal export-palette dracula # 查看 16 色 ANSI 色卡
 ```
 
-### 6. 跨电脑配置导出与无损还原
+### 整合式 Rice 方案
 ```bash
-# 1. 在当前电脑打包保存完整的 Rice 资产快照 (.pmz)
-uv run krice snapshot save --name cachy-orchis-rice
+uv run nirice theme list                      # 列出方案
+uv run nirice theme apply nord-light          # 一键：外壳主题 + 模板渲染 + Niri 动效 + 终端
+```
 
-# 2. 查看快照归档包含的文件与元数据
-uv run krice snapshot info snapshots/cachy-orchis-rice.pmz
+### 迁移
+```bash
+uv run nirice migrate plan                    # 检测 KDE 残留与 Niri 组件缺口
+uv run nirice migrate apply                   # 执行可自动化部分（依赖→配置→模板→校验）
+uv run nirice migrate clean-configs           # 归档 KDE 残留配置（可逆，不删除）
+uv run nirice migrate report -o MIGRATION.md  # 导出迁移报告
+```
 
-# 3. 在另一台电脑上一键还原并自动补齐依赖与 Shell 提示符
-uv run krice snapshot load snapshots/cachy-orchis-rice.pmz --install-deps
+> 面向「原生 KDE 中途转 Niri」机器的完整操作指引见 [KDE-TO-NIRI-PROMPT.md](KDE-TO-NIRI-PROMPT.md)。
+
+### 快照
+```bash
+uv run nirice snapshot save --name my-rice
+uv run nirice snapshot info snapshots/my-rice.pmz
+uv run nirice snapshot load snapshots/my-rice.pmz --install-deps
 ```
 
 ---
 
-## 📁 项目目录结构
+## ⌨️ 默认快捷键设计
+
+| 快捷键 | 动作 |
+| --- | --- |
+| `Mod+T` / `Mod+Return` | 打开终端 (kitty) |
+| `Mod+← → ↑ ↓` | 在列 / 窗口之间聚焦导航 |
+| `Mod+Ctrl+← → ↑ ↓` | 移动列 / 窗口 |
+| `Mod+R` / `Mod+F` | 最大化当前列（占满整列） |
+| `Mod+Shift+R` | 在预设列宽间循环（1/3 → 1/2 → 2/3） |
+| `Mod+C` | 当前列居中 |
+| `Mod+Alt+← / →` | 吸附到最左 / 最右（50% 宽 + 移动） |
+| `Mod+Alt+↑` | 当前列居中 |
+| `Mod+Alt+↓` | 扩展到可用宽度 |
+| `Mod+Shift+F` | 真全屏 |
+| `Mod+V` | 切换浮动窗口 |
+| `Mod+1..9` / `Mod+Ctrl+1..9` | 切换工作区 / 把列移到工作区 |
+| `Mod+D` / `Mod+Space` | Noctalia 应用启动器 |
+| `Mod+S` / `Mod+Shift+S` | 控制中心 / 系统设置 |
+| `Mod+Ctrl+V` | 剪贴板历史 |
+| `Mod+Escape` | 紧急解除快捷键抑制 |
+
+> **注意**：Niri 一个快捷键只允许一个动作。像「吸附左半屏」这种多步操作，实现上通过 `spawn-sh "niri msg action ... && niri msg action ..."` 串联两次官方 CLI 调用。
+
+### Kitty 快捷键
+`Ctrl+Shift+T` 新建 Tab、`Ctrl+Shift+W` 关闭、`Ctrl+Shift+←/→` 切换 Tab、`Ctrl+Shift+Enter` 分屏、`Ctrl+Shift+H/J/K/L` 分屏导航、`Ctrl+Shift+U/O` 实时调透明度、`Ctrl+Shift+Delete` 恢复默认。
+
+---
+
+## 📁 目录结构
 
 ```
-krice/
-├── pyproject.toml              # 项目依赖声明 (uv 管理)
-├── README.md                   # 完整中文使用指南
-├── src/krice/
-│   ├── cli.py                  # Rich + Typer 交互控制台与中文界面
-│   ├── inspector.py            # KDE & 终端环境状态诊断器
-│   ├── installer.py            # 内嵌智能安装器、依赖求解器与 Shell Hook 注入器
-│   ├── kwin_ctl.py             # KWin D-Bus & kwriteconfig6 合成器控制器
-│   ├── theme_ctl.py            # KDE 全维度主题与部件控制器
-│   ├── terminal_ctl.py         # Kitty, Alacritty, Konsole 终端与 Starship 控制器
-│   ├── snapshot.py             # 配置归档打包与跨机器还原引擎
-│   └── presets/
-│       ├── builtin_presets.py  # 动效预设库 (denial, glide, snappy...)
-│       ├── terminal_palettes.py# 16 色 ANSI 终端高清调色板
-│       ├── prompt_presets.py   # Starship 工作目录胶囊与 Fastfetch 模板
-│       └── theme_presets.py    # 整合式 Rice 桌面预设库
-├── tests/                      # Pytest 自动化测试套件
-└── snapshots/                  # 便携式 .pmz 快照归档
+src/nirice/
+├── cli/                    # 命令行界面（按领域拆分，单文件均 < 250 行）
+│   ├── app.py              #   根 Typer 应用
+│   ├── env.py              #   status / doctor / install
+│   ├── niri.py             #   niri 子命令
+│   ├── shell.py            #   shell / bar / templates 子命令
+│   ├── terminal.py         #   terminal 子命令
+│   ├── theme.py            #   theme 子命令
+│   ├── snapshot.py         #   snapshot 子命令
+│   └── migrate.py          #   migrate 子命令
+├── core/                   # 基础设施
+│   ├── paths.py            #   XDG 目录统一解析
+│   ├── process.py          #   子进程封装
+│   └── toml_edit.py        #   TOML 外科手术式编辑
+├── niri/                   # Niri 合成器
+│   ├── animations.py       #   动效方案
+│   ├── keybinds.py         #   快捷键预设
+│   ├── fragments.py        #   其余受管片段
+│   ├── catalog.py          #   受管片段聚合清单
+│   └── controller.py       #   写入 / 校验 / 热重载 / 实时查询
+├── noctalia/               # Noctalia 外壳
+│   ├── templates.py        #   面板 ID、模板映射、产物路径
+│   └── controller.py       #   settings.toml 编辑与模板编排
+├── terminal/               # 终端与 Shell
+│   ├── palettes.py         #   TerminalPalette 数据结构与色彩工具
+│   ├── palettes_light.py   #   浅色调色板
+│   ├── palettes_dark.py    #   暗色调色板
+│   ├── catalog.py          #   调色板注册表
+│   ├── kitty.py            #   Kitty 美学层与回退配色渲染
+│   ├── backends.py         #   Alacritty / Ghostty / Foot / WezTerm / Zellij
+│   ├── prompt.py           #   Starship 提示符与 Fastfetch 生成
+│   └── controller.py       #   编排与模板委派
+├── system/                 # 系统层
+│   ├── packages.py         #   声明式依赖清单与探针
+│   ├── installer.py        #   依赖审计与包安装
+│   ├── kde_data.py         #   KDE 残留检测清单
+│   └── migrate.py          #   迁移规划器
+├── theme/rice.py           # 整合式 Rice 方案
+├── inspector.py            # 桌面状态诊断
+├── models.py               # 跨领域数据模型
+└── snapshot.py             # 快照打包与还原
 ```
+
+---
+
+## 🧪 开发
+
+```bash
+uv sync                  # 安装依赖（含 dev）
+uv run pytest            # 运行测试（59 项）
+uv run ruff check .      # 静态检查
+uv run ruff format .     # 代码格式化
+```
+
+测试通过 `tests/conftest.py` 的 `xdg` 夹具把 `HOME` 与全部 `XDG_*` 目录重定向到临时路径，
+并通过 `binary=""` 注入「未安装 niri/noctalia」的控制器，因此**不会触碰真实桌面配置**。

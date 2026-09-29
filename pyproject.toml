@@ -1,27 +1,42 @@
 [project]
-name = "krice"
-version = "0.1.0"
-description = "Modern KDE Plasma 6 ricing, fluid motion & multi-machine sync toolkit"
+name = "nirice"
+version = "0.2.0"
+description = "Niri + Noctalia Wayland desktop rice, terminal theming & cross-machine migration toolkit"
 readme = "README.md"
 authors = [
     { name = "vesita", email = "vesita164872@outlook.com" }
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "konsave>=2.3.0",
-    "pyyaml>=6.0.3",
     "rich>=15.0.0",
     "typer>=0.27.2",
 ]
 
 [project.scripts]
-krice = "krice:main"
+nirice = "nirice.cli:main"
 
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
+    "ruff>=0.14.0",
 ]
 
 [build-system]
 requires = ["uv_build>=0.12.1,<0.13.0"]
 build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = [
+    "E501",  # 行长由 ruff format 负责
+    "B008",  # typer.Option/Option 作为默认参数是 Typer 的标准写法
+]

@@ -1,163 +1,176 @@
-"""Tests for Terminal & Shell Prompt Theming Controller."""
+"""终端层测试：调色板、Kitty 美学/配色分层、各终端后端与提示符生成。"""
+
+from __future__ import annotations
 
 from pathlib import Path
-from typer.testing import CliRunner
 
-from krice.cli import app
-from krice.presets.prompt_presets import generate_fastfetch_config, generate_starship_config
-from krice.presets.terminal_palettes import CACHY_NORD, NORD_LIGHT, TERMINAL_PALETTES, TerminalPalette
-from krice.terminal_ctl import TerminalController, hex_to_rgb, parse_kde_rgb, rgb_to_hex
+from nirice.noctalia import NoctaliaController
+from nirice.terminal import TERMINAL_PALETTES, TerminalController, backends, hex_to_rgb, rgb_to_hex
+from nirice.terminal.kitty import render_kitty_aesthetics, render_kitty_conf, render_kitty_theme
+from nirice.terminal.prompt import extract_noctalia_palette_block, generate_fastfetch_config, generate_starship_config
 
-runner = CliRunner()
+
+def _controller(xdg: dict[str, Path], dry_run: bool = False) -> TerminalController:
+    noctalia = NoctaliaController(home_dir=xdg["home"], binary="")
+    return TerminalController(dry_run=dry_run, home_dir=xdg["home"], noctalia=noctalia)
+
+
+# ==================== 调色板 ====================
 
 
 def test_color_utilities() -> None:
     assert hex_to_rgb("#FFFFFF") == (255, 255, 255)
-    assert hex_to_rgb("#000000") == (0, 0, 0)
-    assert hex_to_rgb("#2E3440") == (46, 52, 64)
     assert hex_to_rgb("#FFF") == (255, 255, 255)
-
+    assert hex_to_rgb("nope") == (0, 0, 0)
+    assert hex_to_rgb("#GGGGGG") == (0, 0, 0)
     assert rgb_to_hex(46, 52, 64) == "#2E3440"
-    assert parse_kde_rgb("46,52,64") == "#2E3440"
-    assert parse_kde_rgb("invalid", "#123456") == "#123456"
 
 
-def test_terminal_palettes_catalog() -> None:
-    assert "cachy-nord" in TERMINAL_PALETTES
-    assert "catppuccin-mocha" in TERMINAL_PALETTES
-    assert "tokyo-night" in TERMINAL_PALETTES
-    assert "dracula" in TERMINAL_PALETTES
-    assert "gruvbox-dark" in TERMINAL_PALETTES
-
-    nord = TERMINAL_PALETTES["cachy-nord"]
-    assert nord.is_dark is True
-    ansi = nord.to_ansi_list()
-    assert len(ansi) == 16
-    assert ansi[0] == nord.black
-    assert ansi[15] == nord.bright_white
+def test_nord_light_palette_is_curated_light() -> None:
+    pal = TERMINAL_PALETTES["nord-light"]
+    assert pal.is_dark is False
+    assert len(pal.to_ansi_list()) == 16
+    assert pal.to_ansi_list()[0] == pal.black
+    assert pal.to_ansi_list()[15] == pal.bright_white
 
 
-def test_prompt_generators() -> None:
-    starship_cfg = generate_starship_config(CACHY_NORD)
-    assert "directory" in starship_cfg
-    assert "git_branch" in starship_cfg
-    assert CACHY_NORD.cyan in starship_cfg or CACHY_NORD.blue in starship_cfg
-
-    fastfetch_cfg = generate_fastfetch_config(NORD_LIGHT)
-    assert "logo" in fastfetch_cfg
-    assert "modules" in fastfetch_cfg
+def test_catalog_includes_aliases() -> None:
+    for key in ("nord-light", "cachy-nord", "catppuccin-latte", "catppuccin-mocha", "dracula"):
+        assert key in TERMINAL_PALETTES
 
 
-def test_terminal_controller_file_generation(tmp_path: Path) -> None:
-    home_dir = tmp_path / "user"
-    home_dir.mkdir()
-    term_ctl = TerminalController(dry_run=False, home_dir=home_dir)
-
-    # 1. Test Konsole apply
-    ok, msg = term_ctl.apply_konsole(CACHY_NORD)
-    assert ok is True
-    scheme_file = term_ctl.data_dir / "konsole" / f"krice-{CACHY_NORD.name}.colorscheme"
-    assert scheme_file.exists()
-    assert "[Background]" in scheme_file.read_text()
-    assert (term_ctl.config_dir / "konsolerc").exists()
-
-    # 2. Test Alacritty apply
-    ok, msg = term_ctl.apply_alacritty(CACHY_NORD)
-    assert ok is True
-    alacritty_file = term_ctl.config_dir / "alacritty" / "alacritty.toml"
-    assert alacritty_file.exists()
-    alacritty_txt = alacritty_file.read_text()
-    assert "[colors.primary]" in alacritty_txt
-    assert CACHY_NORD.background in alacritty_txt
-
-    # 3. Test Kitty apply
-    ok, msg = term_ctl.apply_kitty(CACHY_NORD)
-    assert ok is True
-    kitty_theme = term_ctl.config_dir / "kitty" / "current-theme.conf"
-    assert kitty_theme.exists()
-    assert f"background {CACHY_NORD.background}" in kitty_theme.read_text()
-
-    # 4. Test Ghostty apply
-    ok, msg = term_ctl.apply_ghostty(CACHY_NORD)
-    assert ok is True
-    ghostty_theme = term_ctl.config_dir / "ghostty" / "themes" / f"krice-{CACHY_NORD.name}"
-    assert ghostty_theme.exists()
-
-    # 5. Test Foot apply
-    ok, msg = term_ctl.apply_foot(CACHY_NORD)
-    assert ok is True
-    foot_cfg = term_ctl.config_dir / "foot" / "foot.ini"
-    assert foot_cfg.exists()
-    assert "[colors]" in foot_cfg.read_text()
-
-    # 6. Test WezTerm apply
-    ok, msg = term_ctl.apply_wezterm(CACHY_NORD)
-    assert ok is True
-    wezterm_theme = term_ctl.config_dir / "wezterm" / "colors" / f"krice-{CACHY_NORD.name}.toml"
-    assert wezterm_theme.exists()
+# ==================== Kitty 分层 ====================
 
 
-    # 6b. Test Zellij apply
-    ok, msg = term_ctl.apply_zellij(CACHY_NORD)
-    assert ok is True
-    zellij_theme = term_ctl.config_dir / "zellij" / "themes" / f"krice-{CACHY_NORD.name}.kdl"
-    assert zellij_theme.exists()
-    assert f'theme "krice-{CACHY_NORD.name}"' in (term_ctl.config_dir / "zellij" / "config.kdl").read_text()
-    # 7. Test Starship & Fastfetch
-    ok_s, _ = term_ctl.apply_starship(CACHY_NORD)
-    assert ok_s is True
-    assert (term_ctl.config_dir / "starship.toml").exists()
-
-    ok_f, _ = term_ctl.apply_fastfetch(CACHY_NORD)
-    assert ok_f is True
-    assert (term_ctl.config_dir / "fastfetch" / "config.jsonc").exists()
+def test_aesthetics_contain_no_colors() -> None:
+    """美学层不得写死颜色，否则会与 Noctalia 渲染的配色打架。"""
+    aesthetic = render_kitty_aesthetics()
+    assert "font_family" in aesthetic
+    assert "MesloLGS Nerd Font" in aesthetic
+    assert "background_opacity" in aesthetic
+    for forbidden in ("color0", "background ", "foreground ", "active_tab_background"):
+        assert forbidden not in aesthetic, f"美学层不应包含 {forbidden!r}"
 
 
-def test_extract_palette_from_mock_kde(tmp_path: Path) -> None:
-    home_dir = tmp_path / "user"
-    home_dir.mkdir()
-    config_dir = home_dir / ".config"
-    config_dir.mkdir(parents=True)
-    kdeglobals = config_dir / "kdeglobals"
-    kdeglobals.write_text("""[Colors:Window]
-BackgroundNormal=33,37,43
-ForegroundNormal=171,178,191
+def test_kitty_conf_includes_are_mode_dependent() -> None:
+    with_noctalia = render_kitty_conf(use_noctalia=True)
+    assert "include nirice.conf" in with_noctalia
+    assert "include themes/noctalia.conf" in with_noctalia
 
-[Colors:Selection]
-BackgroundNormal=97,175,239
-ForegroundNormal=255,255,255
-
-[Colors:Button]
-BackgroundNormal=40,44,52
-ForegroundNormal=171,178,191
-""")
-    term_ctl = TerminalController(dry_run=False, home_dir=home_dir)
-    extracted = term_ctl.extract_palette_from_kde()
-    assert extracted.background == "#21252B"
-    assert extracted.foreground == "#ABB2BF"
-    assert extracted.blue == "#61AFEF"
-    assert extracted.is_dark is True
+    fallback = render_kitty_conf(use_noctalia=False)
+    assert "include nirice-theme.conf" in fallback
+    assert "themes/noctalia.conf" not in fallback
 
 
-def test_terminal_cli_commands() -> None:
-    res_list = runner.invoke(app, ["terminal", "list"])
-    assert res_list.exit_code == 0
-    assert "cachy-nord" in res_list.output
-    assert "catppuccin-mocha" in res_list.output
+def test_kitty_fallback_theme_renders_palette() -> None:
+    pal = TERMINAL_PALETTES["nord-light"]
+    theme = render_kitty_theme(pal)
+    assert f"background            {pal.background}" in theme
+    assert f"color0  {pal.black}" in theme
 
-    res_apply = runner.invoke(app, ["terminal", "apply", "cachy-nord", "--dry-run"])
-    assert res_apply.exit_code == 0
-    assert "正在应用终端调色板" in res_apply.output
 
-    res_sync = runner.invoke(app, ["terminal", "sync", "--dry-run"])
-    assert res_sync.exit_code == 0
-    assert "正在提取 KDE 配色方案" in res_sync.output
-    res_export = runner.invoke(app, ["terminal", "export-palette", "dracula"])
-    assert res_export.exit_code == 0
-    assert "Dracula" in res_export.output
+def test_apply_kitty_falls_back_without_noctalia(xdg: dict[str, Path]) -> None:
+    ctl = _controller(xdg)
+    ok, message = ctl.apply_kitty()
+    assert ok and "nirice 调色板" in message
 
-    res_konsole = runner.invoke(app, ["terminal", "set-konsole", "cachy-nord", "--dry-run"])
+    kitty_dir = xdg["config"] / "kitty"
+    assert (kitty_dir / "nirice.conf").exists()
+    assert (kitty_dir / "nirice-theme.conf").exists()
+    assert "include nirice.conf" in (kitty_dir / "kitty.conf").read_text(encoding="utf-8")
 
-    res_zellij = runner.invoke(app, ["terminal", "set-zellij", "cachy-nord", "--dry-run"])
-    assert res_zellij.exit_code == 0
-    assert res_konsole.exit_code == 0
+
+def test_apply_kitty_rejects_unknown_palette(xdg: dict[str, Path]) -> None:
+    ok, message = _controller(xdg).apply_kitty("nope")
+    assert not ok and "未知" in message
+
+
+# ==================== 各终端后端 ====================
+
+
+def test_backends_generate_expected_files(xdg: dict[str, Path]) -> None:
+    pal = TERMINAL_PALETTES["cachy-nord"]
+    config = xdg["config"]
+
+    ok, _ = backends.alacritty(config, pal, dry_run=False)
+    assert ok and (config / "alacritty" / "themes" / "nirice.toml").exists()
+
+    ok, _ = backends.ghostty(config, pal, dry_run=False)
+    assert ok and (config / "ghostty" / "themes" / f"nirice-{pal.name}").exists()
+
+    ok, _ = backends.foot(config, pal, dry_run=False)
+    assert ok and "[colors]" in (config / "foot" / "foot.ini").read_text(encoding="utf-8")
+
+    ok, _ = backends.wezterm(config, pal, dry_run=False)
+    assert ok and (config / "wezterm" / "colors" / f"nirice-{pal.name}.toml").exists()
+
+    ok, _ = backends.zellij(config, pal, dry_run=False)
+    assert ok
+    assert f'theme "nirice-{pal.name}"' in (config / "zellij" / "config.kdl").read_text(encoding="utf-8")
+
+
+def test_backends_dry_run_writes_nothing(xdg: dict[str, Path]) -> None:
+    pal = TERMINAL_PALETTES["cachy-nord"]
+    ok, _ = backends.alacritty(xdg["config"], pal, dry_run=True)
+    assert ok
+    assert not (xdg["config"] / "alacritty").exists()
+
+
+# ==================== 提示符 ====================
+
+
+def test_starship_uses_palette_indirection() -> None:
+    pal = TERMINAL_PALETTES["nord-light"]
+
+    inline = generate_starship_config(pal, use_noctalia_palette=False)
+    assert 'palette = "nirice"' in inline
+    assert "[palettes.nirice]" in inline
+    assert pal.blue in inline
+
+    external = generate_starship_config(pal, use_noctalia_palette=True)
+    assert 'palette = "noctalia"' in external
+    assert "[palettes.nirice]" not in external
+    assert "fg:blue" in external
+
+
+def test_extract_noctalia_palette_block() -> None:
+    text = (
+        'palette = "noctalia"\n\n'
+        '# >>> NOCTALIA STARSHIP PALETTE >>>\n[palettes.noctalia]\nblue = "#81a1c1"\n'
+        "# <<< NOCTALIA STARSHIP PALETTE <<<\n"
+    )
+    block = extract_noctalia_palette_block(text)
+    assert block.startswith("# >>> NOCTALIA STARSHIP PALETTE >>>")
+    assert "#81a1c1" in block
+    assert extract_noctalia_palette_block("nothing here") == ""
+
+
+def test_apply_starship_preserves_noctalia_block(xdg: dict[str, Path]) -> None:
+    """Noctalia 写入的调色板块必须被原样保留。"""
+    starship = xdg["config"] / "starship.toml"
+    starship.parent.mkdir(parents=True, exist_ok=True)
+    starship.write_text(
+        'palette = "noctalia"\n\n# >>> NOCTALIA STARSHIP PALETTE >>>\n'
+        '[palettes.noctalia]\nblue = "#81a1c1"\n# <<< NOCTALIA STARSHIP PALETTE <<<\n',
+        encoding="utf-8",
+    )
+
+    noctalia = NoctaliaController(home_dir=xdg["home"], binary="/bin/true")
+    # 模拟 Noctalia 已接管 starship 配色
+    noctalia.settings_path.parent.mkdir(parents=True, exist_ok=True)
+    noctalia.settings_path.write_text('[theme.templates]\nbuiltin_ids = ["starship"]\n', encoding="utf-8")
+
+    ctl = TerminalController(home_dir=xdg["home"], noctalia=noctalia)
+    ok, _ = ctl.apply_starship("nord-light")
+    assert ok
+
+    text = starship.read_text(encoding="utf-8")
+    assert "# >>> NOCTALIA STARSHIP PALETTE >>>" in text
+    assert 'blue = "#81a1c1"' in text
+
+
+def test_fastfetch_config_is_json_object() -> None:
+    import json
+
+    data = json.loads(generate_fastfetch_config(TERMINAL_PALETTES["nord-light"]))
+    assert "modules" in data and "logo" in data
