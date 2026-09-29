@@ -101,7 +101,9 @@ debug {
 }
 
 hotkey-overlay {
-    skip-at-startup
+    // 刻意不写 skip-at-startup：niri 会在每次启动时弹出快捷键总览，
+    // 方便熟悉这套自定义绑定。熟悉之后想关掉，取消下面这行注释即可。
+    // skip-at-startup
 }
 """
 

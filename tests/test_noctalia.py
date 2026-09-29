@@ -44,6 +44,30 @@ def test_set_bar_position_persists_and_is_idempotent(xdg: dict[str, Path]) -> No
     assert ok and "已在" in message
 
 
+def test_bar_position_must_use_named_bar_section(xdg: dict[str, Path]) -> None:
+    """回归：bar 是命名 bar，写顶层 [bar] 会被 Noctalia 静默忽略。"""
+    _seed_settings(xdg)
+    ctl = _controller(xdg)
+    ctl.set_bar_position("left")
+
+    text = (xdg["state"] / "noctalia" / "settings.toml").read_text(encoding="utf-8")
+    assert "[bar.default]" in text
+    # 顶层 [bar] 不能带 position
+    assert "[bar]\nposition" not in text
+
+
+def test_legacy_top_level_bar_position_is_dropped(xdg: dict[str, Path]) -> None:
+    """早期版本误写到顶层 [bar] 的 position 应被清理。"""
+    settings = xdg["state"] / "noctalia" / "settings.toml"
+    settings.parent.mkdir(parents=True, exist_ok=True)
+    settings.write_text('[bar]\nposition = "left"\n\n[dock]\nposition = "left"\n', encoding="utf-8")
+
+    assert _controller(xdg).drop_legacy_bar_position() is True
+    text = settings.read_text(encoding="utf-8")
+    assert "position" not in text.split("[dock]")[0], "顶层 [bar] 的 position 应被删除"
+    assert "[dock]" in text and 'position = "left"' in text
+
+
 def test_set_bar_position_rejects_invalid_value(xdg: dict[str, Path]) -> None:
     _seed_settings(xdg)
     ok, message = _controller(xdg).set_bar_position("diagonal")
@@ -57,7 +81,7 @@ def test_existing_sections_are_preserved(xdg: dict[str, Path]) -> None:
 
     text = settings.read_text(encoding="utf-8")
     assert "[dock]" in text and "[theme]" in text and "[wallpaper.default]" in text
-    assert text.index("[bar]") > text.index("[dock]")
+    assert text.index("[bar.default]") > text.index("[dock]")
 
 
 def test_set_theme_updates_palette_and_mode(xdg: dict[str, Path]) -> None:

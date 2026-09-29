@@ -5,6 +5,10 @@ from __future__ import annotations
 BAR_POSITIONS = ("top", "bottom", "left", "right")
 THEME_MODES = ("dark", "light")
 
+# Noctalia 的 bar 是命名 bar：真正的配置小节是 [bar.<name>]，
+# 顶层 [bar] 只承载 order = [...]。默认 bar 名为 default。
+DEFAULT_BAR_NAME = "default"
+
 # `noctalia msg panel-toggle <id>` 实际支持的面板
 PANEL_IDS = (
     "launcher",

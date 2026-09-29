@@ -9,10 +9,19 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from nirice.core import XDGPaths, format_value, get_key, run_capture, set_key, which
+from nirice.core import (
+    XDGPaths,
+    find_section,
+    format_value,
+    get_key,
+    run_capture,
+    set_key,
+    which,
+)
 from nirice.noctalia.templates import (
     BAR_POSITIONS,
     BUILTIN_MANIFEST,
+    DEFAULT_BAR_NAME,
     PANEL_IDS,
     TEMPLATE_FOR_APP,
     THEME_MODES,
@@ -57,8 +66,17 @@ class NoctaliaController:
         except (tomllib.TOMLDecodeError, OSError):
             return {}
 
-    def get_bar_position(self) -> str:
-        return self.read_settings().get("bar", {}).get("position", "top")
+    def get_bar_position(self, bar_name: str = DEFAULT_BAR_NAME) -> str:
+        """读取状态栏所在边缘。
+
+        注意：Noctalia 的 bar 是**命名 bar**，真正的配置在 `[bar.<name>]` 下；
+        顶层 `[bar]` 只承载 `order = [...]`。写到顶层会被静默忽略。
+        """
+        bar = self.read_settings().get("bar", {})
+        entry = bar.get(bar_name)
+        if isinstance(entry, dict):
+            return entry.get("position", "top")
+        return "top"
 
     def get_dock_position(self) -> str:
         return self.read_settings().get("dock", {}).get("position", "left")
@@ -107,14 +125,43 @@ class NoctaliaController:
 
     # ==================== 语义化操作 ====================
 
-    def set_bar_position(self, position: str) -> tuple[bool, str]:
-        """把状态栏移动到指定屏幕边缘。"""
+    def set_bar_position(self, position: str, bar_name: str = DEFAULT_BAR_NAME) -> tuple[bool, str]:
+        """把状态栏移动到指定屏幕边缘。
+
+        必须写到 `[bar.<name>]`：顶层 `[bar]` 只承载 `order`，写在那里的
+        `position` 会被 Noctalia 静默忽略（校验器只校验小节、不校验键）。
+
+        另外，该设置需要**重启 Noctalia** 才会重新布局，`config-reload` 不够。
+        """
         pos = position.strip().lower()
         if pos not in BAR_POSITIONS:
             return False, f"无效的状态栏位置 '{position}'，可选: {', '.join(BAR_POSITIONS)}"
-        if self.settings_path.exists() and self.get_bar_position() == pos:
+
+        self.drop_legacy_bar_position()
+        if self.settings_path.exists() and self.get_bar_position(bar_name) == pos:
             return True, f"状态栏已在 '{pos}' 位置"
-        return self.write_setting("bar", "position", pos)
+        return self.write_setting(f"bar.{bar_name}", "position", pos)
+
+    def drop_legacy_bar_position(self) -> bool:
+        """清掉早期版本误写到顶层 `[bar]` 的 position 键（无效且会造成困惑）。"""
+        if not self.settings_path.exists():
+            return False
+        try:
+            original = self.settings_path.read_text(encoding="utf-8")
+        except OSError:
+            return False
+        if get_key(original, "bar", "position") is None:
+            return False
+        lines = original.splitlines()
+        found = find_section(lines, "bar")
+        if not found:
+            return False
+        start, end = found
+        kept = [ln for i, ln in enumerate(lines) if not (start < i < end and ln.strip().startswith("position"))]
+        if not self.dry_run:
+            self._backup()
+            self.settings_path.write_text("\n".join(kept) + "\n", encoding="utf-8")
+        return True
 
     def set_dock_position(self, position: str) -> tuple[bool, str]:
         pos = position.strip().lower()

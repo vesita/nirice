@@ -7,7 +7,15 @@ from pathlib import Path
 from nirice.noctalia import NoctaliaController
 from nirice.terminal import TERMINAL_PALETTES, TerminalController, backends, hex_to_rgb, rgb_to_hex
 from nirice.terminal.kitty import render_kitty_aesthetics, render_kitty_conf, render_kitty_theme
-from nirice.terminal.prompt import extract_noctalia_palette_block, generate_fastfetch_config, generate_starship_config
+from nirice.terminal.prompt import (
+    CAPSULE_PRESETS,
+    DEFAULT_CAPSULE,
+    _palette_refs,
+    generate_starship_config,
+)
+
+# 胶囊里使用的 Arch 图标（Material Design 版，Nerd Fonts 中形体最大的一种）
+ARCH_GLYPH = "\U000f08c7"  # md-arch，实测形体最大
 
 
 def _controller(xdg: dict[str, Path], dry_run: bool = False) -> TerminalController:
@@ -155,47 +163,76 @@ def test_starship_uses_palette_indirection() -> None:
     external = generate_starship_config(pal, use_noctalia_palette=True)
     assert 'palette = "noctalia"' in external
     assert "[palettes.nirice]" not in external
-    assert "fg:blue" in external
+    assert f"bg:{CAPSULE_PRESETS[DEFAULT_CAPSULE].pill}" in external
 
 
-def test_extract_noctalia_palette_block() -> None:
-    text = (
-        'palette = "noctalia"\n\n'
-        '# >>> NOCTALIA STARSHIP PALETTE >>>\n[palettes.noctalia]\nblue = "#81a1c1"\n'
-        "# <<< NOCTALIA STARSHIP PALETTE <<<\n"
-    )
-    block = extract_noctalia_palette_block(text)
-    assert block.startswith("# >>> NOCTALIA STARSHIP PALETTE >>>")
-    assert "#81a1c1" in block
-    assert extract_noctalia_palette_block("nothing here") == ""
+def test_capsule_pill_is_not_the_terminal_background() -> None:
+    """回归：Noctalia 的 base 就等于终端背景色，用它当胶囊底色会让胶囊完全隐形。"""
+    for name, style in CAPSULE_PRESETS.items():
+        assert style.pill != "base", f"{name} 的底色是 base，会与终端背景融为一体"
+    cfg = generate_starship_config(TERMINAL_PALETTES["nord-light"], use_noctalia_palette=True)
+    assert "bg:base" not in cfg, "base 是终端背景色，不能作为胶囊底色"
 
 
-def test_apply_starship_preserves_noctalia_block(xdg: dict[str, Path]) -> None:
-    """Noctalia 写入的调色板块必须被原样保留。"""
-    starship = xdg["config"] / "starship.toml"
-    starship.parent.mkdir(parents=True, exist_ok=True)
-    starship.write_text(
-        'palette = "noctalia"\n\n# >>> NOCTALIA STARSHIP PALETTE >>>\n'
-        '[palettes.noctalia]\nblue = "#81a1c1"\n# <<< NOCTALIA STARSHIP PALETTE <<<\n',
-        encoding="utf-8",
-    )
+def _contrast(fg_hex: str, bg_hex: str) -> float:
+    """WCAG 相对亮度对比度。"""
 
-    noctalia = NoctaliaController(home_dir=xdg["home"], binary="/bin/true")
-    # 模拟 Noctalia 已接管 starship 配色
-    noctalia.settings_path.parent.mkdir(parents=True, exist_ok=True)
-    noctalia.settings_path.write_text('[theme.templates]\nbuiltin_ids = ["starship"]\n', encoding="utf-8")
+    def channel(value: int) -> float:
+        c = value / 255
+        return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
 
-    ctl = TerminalController(home_dir=xdg["home"], noctalia=noctalia)
-    ok, _ = ctl.apply_starship("nord-light")
-    assert ok
+    def luminance(color: str) -> float:
+        h = color.lstrip("#")
+        r, g, b = (int(h[i : i + 2], 16) for i in (0, 2, 4))
+        return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b)
 
-    text = starship.read_text(encoding="utf-8")
-    assert "# >>> NOCTALIA STARSHIP PALETTE >>>" in text
-    assert 'blue = "#81a1c1"' in text
+    hi, lo = sorted((luminance(fg_hex), luminance(bg_hex)), reverse=True)
+    return (hi + 0.05) / (lo + 0.05)
 
 
-def test_fastfetch_config_is_json_object() -> None:
-    import json
+def test_every_capsule_preset_is_readable_in_both_themes() -> None:
+    """每个预设都要兑现它自己声明的 min_contrast。
 
-    data = json.loads(generate_fastfetch_config(TERMINAL_PALETTES["nord-light"]))
-    assert "modules" in data and "logo" in data
+    彩色预设（glacier/amber/moss）是按 **Noctalia 实际生成的调色板**设计的 ——
+    其浅色主题下 accent 偏亮（cyan=#7BB3C3、yellow=#C5A565），才能与深色墨水
+    配成高对比。nirice 自带的回退调色板里这些 accent 偏暗，所以只有 ink 是
+    跨调色板安全的选择（见下一个测试）。
+    """
+    noctalia_light = {
+        "base": "#eceff4",
+        "text": "#414858",
+        "surface1": "#3b4252",
+        "overlay1": "#4c566a",
+        "cyan": "#7bb3c3",
+        "yellow": "#c5a565",
+        "green": "#96b17f",
+        "blue": "#81a1c1",
+    }
+    noctalia_dark = {
+        "base": "#2e3440",
+        "text": "#d8dee9",
+        "surface1": "#3b4252",
+        "overlay1": "#7684a0",
+        "cyan": "#88c0d0",
+        "yellow": "#ebcb8b",
+        "green": "#a3be8c",
+        "blue": "#81a1c1",
+    }
+    for mode, palette in (("light", noctalia_light), ("dark", noctalia_dark)):
+        for name, style in CAPSULE_PRESETS.items():
+            ratio = _contrast(palette[style.ink], palette[style.pill])
+            assert ratio >= style.min_contrast, (
+                f"{name} 在 Noctalia {mode} 主题下对比度仅 {ratio:.2f}，低于其声明的 {style.min_contrast}"
+            )
+
+
+def test_ink_preset_is_safe_across_palette_sources() -> None:
+    """ink 只依赖「前景 / 背景」两个角色，因此在两套调色板下都成立。"""
+    sources = {
+        "light": _palette_refs(TERMINAL_PALETTES["nord-light"]),
+        "dark": _palette_refs(TERMINAL_PALETTES["cachy-nord"]),
+    }
+    style = CAPSULE_PRESETS["ink"]
+    for mode, refs in sources.items():
+        ratio = _contrast(refs[style.ink], refs[style.pill])
+        assert ratio >= style.min_contrast, f"ink 在 nirice {mode} 调色板下对比度仅 {ratio:.2f}"

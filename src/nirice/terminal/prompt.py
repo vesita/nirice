@@ -7,6 +7,10 @@ from dataclasses import dataclass
 
 from nirice.terminal.palettes import TerminalPalette
 
+# Noctalia 官方 starship 模板：其 [palettes.noctalia] 的名字集合必须与
+# nirice 回退调色板的键名完全一致，否则同一 format 在两套来源下会渲染出不同结果。
+NOCTALIA_STARSHIP_TEMPLATE = "/usr/share/noctalia/assets/templates/starship/starship.toml"
+
 
 @dataclass(frozen=True)
 class LanguageCapsuleSpec:
@@ -45,11 +49,22 @@ SOFTWARE_CAPSULES: list[LanguageCapsuleSpec] = [
 
 
 def _palette_refs(palette: TerminalPalette) -> dict[str, str]:
-    """把调色板映射为 Starship 调色板变量名 -> 十六进制值。"""
-    pill_bg = palette.selection_bg if palette.is_dark else "#FFFFFF"
+    """把调色板映射为与 Noctalia starship 模板**同名同语义**的变量。
+
+    名称必须与 Noctalia 的 starship 模板逐一对齐，否则同一个 format 字符串
+    在「Noctalia 配色」与「nirice 回退配色」两套来源下会得到不同结果。
+    Noctalia 的映射为：base/surface0 = 终端背景，surface1/overlay0 = ANSI 黑，
+    overlay1/subtext0 = 亮黑，subtext1 = ANSI 白，text = 前景。
+    """
     return {
         "text": palette.foreground,
-        "base": pill_bg,
+        "base": palette.background,
+        "surface0": palette.background,
+        "surface1": palette.black,
+        "overlay0": palette.black,
+        "overlay1": palette.bright_black,
+        "subtext0": palette.bright_black,
+        "subtext1": palette.white,
         "blue": palette.blue,
         "red": palette.red,
         "green": palette.green,
@@ -58,21 +73,88 @@ def _palette_refs(palette: TerminalPalette) -> dict[str, str]:
         "magenta": palette.magenta,
         "white": palette.white,
         "black": palette.black,
-        "overlay1": "#4C566A" if palette.is_dark else "#CBD5E1",
-        "subtext0": palette.dim_foreground or palette.bright_black,
     }
 
 
-def generate_starship_config(palette: TerminalPalette, use_noctalia_palette: bool = False) -> str:
-    """生成一体化极简浮动胶囊 Starship 布局。
+# 胶囊配色预设：三要素在**浅色与深色主题下的对比度都 >= 4.2**（除 frost 外，
+# 由 tests 保证）。pill=胶囊底色，ink=胶囊上的文字色，divider=分隔线色。
+@dataclass(frozen=True)
+class CapsuleStyle:
+    """胶囊配色三要素：pill=底色，ink=胶囊上的文字色，divider=分隔线色。"""
+
+    pill: str
+    ink: str
+    divider: str
+    description: str
+    # 该方案承诺的最低对比度（浅色/深色主题都要满足）。
+    # 4.2 = 清晰可读；3.0 = 柔和方案（胶囊字为 bold，可接受）。
+    min_contrast: float = 4.2
+
+
+CAPSULE_PRESETS: dict[str, CapsuleStyle] = {
+    "glacier": CapsuleStyle(
+        "cyan",
+        "surface1",
+        "surface1",
+        "冰青主题色（4.35 / 5.03）—— 呼应 Nord Frost 的青色强调",
+        4.2,
+    ),
+    "ink": CapsuleStyle(
+        "text",
+        "base",
+        "surface1",
+        "反白最高对比（7.95 / 9.25）—— 黑白强对比",
+        4.2,
+    ),
+    "amber": CapsuleStyle(
+        "yellow",
+        "surface1",
+        "surface1",
+        "暖琥珀（4.29 / 6.44）",
+        4.2,
+    ),
+    "moss": CapsuleStyle(
+        "green",
+        "surface1",
+        "surface1",
+        "苔绿（4.26 / 4.94）",
+        4.2,
+    ),
+    "slate": CapsuleStyle(
+        "overlay1",
+        "base",
+        "surface1",
+        "中性石板（6.40 / 3.32）—— 素雅低调，深色主题下偏柔和",
+        3.0,
+    ),
+    "frost": CapsuleStyle(
+        "blue",
+        "surface1",
+        "overlay0",
+        "霜蓝（3.70 / 3.70）—— 柔和低对比",
+        3.0,
+    ),
+}
+DEFAULT_CAPSULE = "glacier"
+
+
+def generate_starship_config(
+    palette: TerminalPalette,
+    use_noctalia_palette: bool = False,
+    capsule: str = DEFAULT_CAPSULE,
+) -> str:
+    """生成浮动胶囊 Starship 布局。
 
     颜色一律通过 Starship 调色板变量引用：
     - `use_noctalia_palette=True` 时引用 Noctalia 模板生成的 `noctalia` 调色板，
       使提示符配色随外壳主题自动联动；
     - 否则内联一份 `nirice` 调色板，保证无 Noctalia 时也能正常工作。
+
+    `capsule` 选择配色预设，见 CAPSULE_PRESETS。
     """
     refs = _palette_refs(palette)
-    palette_name = "noctalia" if use_noctalia_palette else "nirice"
+    style = CAPSULE_PRESETS.get(capsule, CAPSULE_PRESETS[DEFAULT_CAPSULE])
+    pill, ink, divider = style.pill, style.ink, style.divider
 
     module_formats = "\n".join(f"${spec.module}\\" for spec in SOFTWARE_CAPSULES)
     module_sections: list[str] = []
@@ -80,8 +162,8 @@ def generate_starship_config(palette: TerminalPalette, use_noctalia_palette: boo
         module_sections.append(
             f"""[{spec.module}]
 symbol = "{spec.symbol}"
-style = "fg:text bg:base bold"
-format = "[│ ](fg:overlay1 bg:base)[{spec.symbol} ](fg:{spec.brand_color} bg:base)[{spec.var_template} ]($style)"
+style = "fg:{ink} bg:{pill}"
+format = "[ │ ](fg:{divider} bg:{pill})[{spec.symbol} ](fg:{ink} bg:{pill})[{spec.var_template} ](fg:{ink} bg:{pill})"
 """
         )
     rendered_modules = "\n".join(module_sections)
@@ -92,7 +174,13 @@ format = "[│ ](fg:overlay1 bg:base)[{spec.symbol} ](fg:{spec.brand_color} bg:b
         entries = "\n".join(f'{key} = "{value}"' for key, value in refs.items())
         palette_block = f'palette = "nirice"\n\n[palettes.nirice]\n{entries}\n'
 
-    return f"""# Starship 提示符 - 一体化浮动胶囊布局，由 nirice 生成（配色: {palette_name}）
+    return f"""# Starship 提示符 - 浮动胶囊布局，由 nirice 生成
+# 配色预设: {capsule} —— {style.description}
+#
+# ⚠️ 胶囊底色绝不能用 base：Noctalia 的 base 就等于终端背景色，
+#    会让整个胶囊和背景融为一体、完全看不见。
+#    修改配色请改 src/nirice/terminal/prompt.py 的 CAPSULE_PRESETS，
+#    然后执行 `nirice terminal set-starship` 重新生成。
 
 {palette_block}
 format = \"\"\"
@@ -107,29 +195,29 @@ $character
 command_timeout = 800
 
 [directory]
-style = "fg:text bg:base bold"
-format = "[](base)[  ](fg:cyan bg:base)[$path ]($style)"
+style = "fg:{ink} bg:{pill} bold"
+format = "[]({pill})[ 󰣇 ](fg:{ink} bg:{pill} bold)[│](fg:{divider} bg:{pill})[ $path ]($style)"
 truncation_length = 3
 truncation_symbol = "…/"
 
 [git_branch]
 symbol = ""
-style = "fg:text bg:base bold"
-format = "[│ ](fg:overlay1 bg:base)[$symbol ](fg:blue bg:base)[$branch ]($style)"
+style = "fg:{ink} bg:{pill} bold"
+format = "[ │ ](fg:{divider} bg:{pill})[$symbol ](fg:{ink} bg:{pill})[$branch ]($style)"
 
 [git_status]
-style = "fg:yellow bg:base"
-format = "([$all_status$ahead_behind ]($style))"
+style = "fg:{ink} bg:{pill}"
+format = "([ $all_status$ahead_behind ](fg:{ink} bg:{pill}))"
 
 {rendered_modules}
 [cmd_duration]
 min_time = 500
-style = "fg:subtext0 bg:base bold"
-format = "[│ ](fg:overlay1 bg:base)[⏱ ](fg:yellow bg:base)[$duration ]($style)"
+style = "fg:{ink} bg:{pill} bold"
+format = "[ │ ](fg:{divider} bg:{pill})[⏱ ](fg:{ink} bg:{pill})[$duration ]($style)"
 
 [character]
-success_symbol = "[ ](fg:base)[❯](bold blue)"
-error_symbol = "[ ](fg:base)[❯](bold red)"
+success_symbol = "[ ](fg:{pill})[❯](bold blue)"
+error_symbol = "[ ](fg:{pill})[❯](bold red)"
 """
 
 

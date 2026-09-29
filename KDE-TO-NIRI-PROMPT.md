@@ -369,19 +369,39 @@ Noctalia 是配色的**唯一事实来源**。它的配置分两层：
 
 ### 5.1 状态栏移到左侧
 
+**⚠️ 这里有两个坑，先看清楚再动手：**
+
+1. Noctalia 的 bar 是**命名 bar**，真正的配置小节是 `[bar.<名称>]`，
+   顶层 `[bar]` 只承载 `order = [...]`。把 `position` 写到顶层 `[bar]`
+   **不会报错，但会被静默忽略**（校验器只校验小节是否存在，不校验键）。
+   默认 bar 名是 `default`。
+2. 该设置**需要重启 Noctalia 才会重新布局**，`noctalia msg config-reload` 不够。
+
 往 `~/.local/state/noctalia/settings.toml` 追加：
 
 ```toml
-[bar]
+[bar.default]
 position = "left"
 ```
 
 合法值为 `top` / `bottom` / `left` / `right`。改完执行：
 
 ```bash
-noctalia config validate
-noctalia msg config-reload
+noctalia config validate          # 注意：这个命令不会告诉你键名写错了
+noctalia msg config-reload        # 只是个轻量重载，位置不会变
+pkill -x noctalia                 # 必须重启外壳才会重排布局
+setsid noctalia >/dev/null 2>&1 & # 重新拉起（或在 niri autostart 里已配好，注销重登即可）
 ```
+
+**验证**：用 `noctalia config export full | grep -A30 '^\[bar\]'` 可以看到
+Noctalia 完整的 bar 结构（`order` + 各命名 bar 的全部键），这是确认键名的最快方式。
+
+连带的两个常见副作用：
+
+- 状态栏移到左侧后，它与同样在左侧的 **dock** 会并排出现。不需要 dock 的话：
+  `noctalia msg dock-hide`（持久生效）。
+- 侧边栏默认 `thickness = 34`（像素），偏窄，时钟等小组件会换行。可以在
+  `[bar.default]` 里加大，例如 `thickness = 48`，同样需要重启生效。
 
 ### 5.2 设定主题
 
@@ -671,7 +691,7 @@ noctalia config validate                         # 配置合法
 noctalia msg status                              # 外壳运行中
 noctalia msg color-scheme-get                    # builtin <配色名>
 noctalia msg theme-mode-get                      # dark / light
-grep -A2 '^\[bar\]' ~/.local/state/noctalia/settings.toml   # position = "left"
+grep -A2 '^\[bar\.default\]' ~/.local/state/noctalia/settings.toml  # position = "left"
 
 # —— 模板渲染产物 ——
 ls ~/.config/kitty/themes/noctalia.conf
