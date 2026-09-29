@@ -104,8 +104,10 @@ debug {
 }
 
 hotkey-overlay {
-    // 刻意不写 skip-at-startup：niri 会在每次启动时弹出快捷键总览，
-    // 方便熟悉这套自定义绑定。熟悉之后想关掉，取消下面这行注释即可。
+    // niri 的内置动作名硬编码英文，未绑定的动作也会列进总览，
+    // 不隐藏就会混入 "(not bound) Exit niri" 这类英文条目。
+    hide-not-bound
+    // 登录时自动弹出总览，方便熟悉绑定；想关掉就取消下面这行注释。
     // skip-at-startup
 }
 """

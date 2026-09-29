@@ -27,6 +27,39 @@ def _binding_combos(text: str) -> list[str]:
     return combos
 
 
+# niri 里 Mod 是 Super 的别名，都算修饰键
+_MODIFIERS = {"MOD", "SUPER", "CTRL", "ALT", "SHIFT"}
+
+
+def _binding_actions(text: str) -> dict[str, str]:
+    """提取 binds 块中「按键组合 -> 动作名」映射，忽略注释行。"""
+    body = text.split("binds {", 1)[1].rsplit("}", 1)[0]
+    actions: dict[str, str] = {}
+    for raw in body.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("//") or "{" not in line:
+            continue
+        head, _, tail = line.partition("{")
+        combo = head.strip().split()[0]
+        actions[combo] = tail.split(";", 1)[0].strip()
+    return actions
+
+
+def _binding_titles(text: str) -> dict[str, str]:
+    """提取 binds 块中「按键组合 -> hotkey-overlay-title」映射。"""
+    body = text.split("binds {", 1)[1].rsplit("}", 1)[0]
+    titles: dict[str, str] = {}
+    marker = 'hotkey-overlay-title="'
+    for raw in body.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("//") or "{" not in line:
+            continue
+        head = line.split("{", 1)[0]
+        combo = head.split()[0]
+        titles[combo] = head.split(marker, 1)[1].split('"', 1)[0] if marker in head else ""
+    return titles
+
+
 def _controller(xdg: dict[str, Path]) -> NiriController:
     # binary="" 模拟「未安装 niri」，避免测试触碰真实合成器
     return NiriController(dry_run=False, home_dir=xdg["home"], config_dir=xdg["config"], binary="")
@@ -60,23 +93,52 @@ def test_keybinds_meet_user_requirements() -> None:
 def test_in_column_navigation_has_no_arrow_equivalent() -> None:
     """列内窗口导航只能靠 K/J —— 方向键那两组管的是跨列与跨工作区。
 
-    所以 K/J 不是 HJKL 别名，删掉它们会彻底失去列内切窗口与调序的能力。
+    所以 K/J 不是 HJKL 别名，删掉它们会彻底失去列内切窗口的能力。
     """
-    body = MANAGED_FRAGMENTS["keybinds.kdl"].split("binds {", 1)[1].rsplit("}", 1)[0]
-    lines = [ln.strip() for ln in body.splitlines()]
-    lines = [ln for ln in lines if ln and not ln.startswith("//")]
+    actions = _binding_actions(MANAGED_FRAGMENTS["keybinds.kdl"])
 
-    def action_of(combo: str) -> str:
-        match = next(ln for ln in lines if ln.startswith(f"{combo} "))
-        return match.split("{", 1)[1].split(";", 1)[0].strip()
-
-    assert action_of("Mod+K") == "focus-window-up"
-    assert action_of("Mod+J") == "focus-window-down"
-    assert action_of("Mod+Ctrl+K") == "move-window-up"
-    assert action_of("Mod+Ctrl+J") == "move-window-down"
+    assert actions["Mod+K"] == "focus-window-up"
+    assert actions["Mod+J"] == "focus-window-down"
     # 方向键承载的是另一层语义，两组不可互换
-    assert action_of("Mod+Up") == "focus-workspace-up"
-    assert action_of("Mod+Down") == "focus-workspace-down"
+    assert actions["Mod+Up"] == "focus-workspace-up"
+    assert actions["Mod+Down"] == "focus-workspace-down"
+
+
+def test_only_single_modifier_bindings() -> None:
+    """用户只用单修饰键组合，两个及以上修饰键（Mod+Shift / Mod+Ctrl / Ctrl+Alt）一律不绑。"""
+    offenders: list[str] = []
+    for combo in _binding_combos(MANAGED_FRAGMENTS["keybinds.kdl"]):
+        mods = [part for part in combo.split("+") if part in _MODIFIERS]
+        if len(mods) > 1:
+            offenders.append(combo)
+    assert not offenders, f"存在二级及以上组合键: {offenders}"
+
+
+def test_alignment_bindings() -> None:
+    """居中与贴边：niri 没有原生"贴边"动作，靠 move-column-to-first/last 把列移到边界。"""
+    actions = _binding_actions(MANAGED_FRAGMENTS["keybinds.kdl"])
+
+    assert actions["Mod+C"] == "center-column"
+    assert actions["Mod+Z"] == "move-column-to-first"
+    assert actions["Mod+X"] == "move-column-to-last"
+
+
+def test_readme_keybind_table_matches_preset() -> None:
+    """README 的快捷键表是预设的一份副本，必须逐条一致。
+
+    预设才是唯一的事实源；这张表一旦与它分叉，文档就会开始骗人。
+    """
+    readme = Path(__file__).resolve().parents[1] / "README.md"
+    section = readme.read_text(encoding="utf-8").split("## ⌨️ 默认快捷键设计", 1)[1]
+    section = section.split("### Kitty", 1)[0]
+    rows = [line for line in section.splitlines() if line.startswith("|")][2:]
+
+    titles = _binding_titles(MANAGED_FRAGMENTS["keybinds.kdl"])
+    assert len(rows) == len(titles), f"README 表格 {len(rows)} 行，预设 {len(titles)} 条绑定"
+
+    cells = [line.split("|") for line in rows]
+    assert [c[2].strip() for c in cells] == [f"`{combo}`" for combo in titles], "README 的按键列与预设不一致"
+    assert [c[3].strip() for c in cells] == list(titles.values()), "README 的动作列与预设标题不一致"
 
 
 def test_animation_presets_are_valid_kdl_blocks() -> None:

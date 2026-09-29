@@ -136,48 +136,43 @@ uv run nirice snapshot load snapshots/my-rice.pmz --install-deps
 | 用途 | 快捷键 | 动作 |
 | --- | --- | --- |
 | 总览与应急 | `Mod+Slash` | 查看全部快捷键 |
-| 总览与应急 | `Mod+Escape` | 解除快捷键抑制（应急） |
+| 总览与应急 | `Mod+Escape` | 应急：恢复快捷键响应 |
 | 窗口 | `Mod+Q` | 关闭窗口 |
-| 窗口 | `Mod+Shift+V` | 在浮动与平铺之间切换 |
-| 应用 | `Mod+T` | 终端：kitty |
-| 应用 | `Mod+D` | 应用启动器 |
-| 应用 | `Mod+B` | 浏览器：Firefox |
-| 应用 | `Mod+E` | 文件管理器：Nautilus |
+| 窗口 | `Mod+P` | 浮动 / 平铺切换 |
+| 应用 | `Mod+T` | 打开终端 |
+| 应用 | `Mod+D` | 打开应用启动器 |
+| 应用 | `Mod+B` | 打开浏览器 |
+| 应用 | `Mod+E` | 打开文件管理器 |
 | 外壳 | `Mod+V` | 剪贴板历史 |
 | 外壳 | `Mod+S` | 控制中心 |
-| 外壳 | `Mod+Shift+S` | 系统设置 |
-| 外壳 | `Mod+Shift+Q` | 会话菜单（关机 / 重启） |
-| 外壳 | `Mod+Alt+L` | 锁定屏幕 |
-| 导航 | `Mod+←` | 聚焦左侧一列 |
-| 导航 | `Mod+→` | 聚焦右侧一列 |
-| 导航 | `Mod+↑` | 上一个工作区 |
-| 导航 | `Mod+↓` | 下一个工作区 |
-| 导航 | `Mod+K` | 列内上一个窗口 |
-| 导航 | `Mod+J` | 列内下一个窗口 |
-| 导航 | `Mod+G` | 回到上一个聚焦的窗口 |
-| 移动 | `Mod+Ctrl+←` | 整列左移 |
-| 移动 | `Mod+Ctrl+→` | 整列右移 |
-| 移动 | `Mod+Ctrl+↑` | 整列移到上一个工作区 |
-| 移动 | `Mod+Ctrl+↓` | 整列移到下一个工作区 |
-| 移动 | `Mod+Ctrl+K` | 列内窗口上移 |
-| 移动 | `Mod+Ctrl+J` | 列内窗口下移 |
-| 布局 | `Mod+R` | 改变窗口大小（循环预设列宽：1/3 → 1/2 → 2/3） |
-| 布局 | `Mod+Shift+F` | 真全屏 |
-| 布局 | `Mod+W` | 切换标签式列显示 |
-| 总览 | `Mod+Tab` | 总览 Overview（所有工作区） |
-| 截图 | `Print` | 截图（交互式选区） |
-| 截图 | `Ctrl+Print` | 截取整个屏幕 |
-| 截图 | `Alt+Print` | 截取当前窗口 |
+| 外壳 | `Mod+I` | 系统设置 |
+| 外壳 | `Mod+O` | 电源与会话 |
+| 导航 | `Mod+Left` | 聚焦左列 |
+| 导航 | `Mod+Right` | 聚焦右列 |
+| 导航 | `Mod+Up` | 上一个工作区 |
+| 导航 | `Mod+Down` | 下一个工作区 |
+| 导航 | `Mod+G` | 聚焦上一个窗口 |
+| 导航 | `Mod+K` | 同列上一个窗口 |
+| 导航 | `Mod+J` | 同列下一个窗口 |
+| 布局 | `Mod+R` | 循环列宽 1/3 → 1/2 → 2/3 |
+| 布局 | `Mod+C` | 当前列居中 |
+| 布局 | `Mod+Z` | 当前列靠左 |
+| 布局 | `Mod+X` | 当前列靠右 |
+| 布局 | `Mod+F` | 全屏 |
+| 布局 | `Mod+W` | 标签式分组 |
+| 总览 | `Mod+Tab` | 工作区总览 |
+| 截图 | `Print` | 区域截图 |
+| 截图 | `Ctrl+Print` | 全屏截图 |
+| 截图 | `Alt+Print` | 窗口截图 |
 | 媒体与亮度 | `XF86AudioRaiseVolume` | 音量增大 |
 | 媒体与亮度 | `XF86AudioLowerVolume` | 音量减小 |
 | 媒体与亮度 | `XF86AudioMute` | 静音开关 |
-| 媒体与亮度 | `XF86AudioMicMute` | 麦克风静音开关 |
+| 媒体与亮度 | `XF86AudioMicMute` | 麦克风静音 |
 | 媒体与亮度 | `XF86AudioPlay` | 播放 / 暂停 |
 | 媒体与亮度 | `XF86AudioNext` | 下一首 |
 | 媒体与亮度 | `XF86AudioPrev` | 上一首 |
-| 媒体与亮度 | `XF86MonBrightnessUp` | 屏幕亮度增大 |
-| 媒体与亮度 | `XF86MonBrightnessDown` | 屏幕亮度减小 |
-| 退出 | `Ctrl+Alt+Delete` | 退出 niri |
+| 媒体与亮度 | `XF86MonBrightnessUp` | 亮度增大 |
+| 媒体与亮度 | `XF86MonBrightnessDown` | 亮度减小 |
 
 ### Kitty 快捷键
 `Ctrl+Shift+T` 新建 Tab、`Ctrl+Shift+W` 关闭、`Ctrl+Shift+←/→` 切换 Tab、`Ctrl+Shift+Enter` 分屏、`Ctrl+Shift+H/J/K/L` 分屏导航、`Ctrl+Shift+U/O` 实时调透明度、`Ctrl+Shift+Delete` 恢复默认。
