@@ -15,6 +15,9 @@ niri 的 hotkey overlay **没有本地化**：文案硬编码在二进制里，�
   关闭显示器、壁纸选择器。
 - 对齐到边界用 `move-column-to-first/last`：niri 是滚动平铺模型，把列移到
   最左 / 最右位置即视觉上的贴边，无需改列宽。
+- 硬件功能键（音量 / 亮度 / 媒体）保留绑定，但用 `hotkey-overlay-title=null`
+  从 Mod+/ 总览里隐去，让总览只呈现 Mod 组合键。`null` 是 niri 的显式隐藏写法，
+  与「不绑定」是两回事：功能照常可用，只是不列进总览。
 """
 
 from __future__ import annotations
@@ -66,15 +69,11 @@ binds {
     Mod+K                         hotkey-overlay-title="同列上一个窗口" { focus-window-up; }
     Mod+J                         hotkey-overlay-title="同列下一个窗口" { focus-window-down; }
 
-    // ─── 布局：宽度与对齐 ───
-    // Mod+R 在预设列宽之间循环：1/3 → 1/2 → 2/3
-    Mod+R                         hotkey-overlay-title="循环列宽 1/3 → 1/2 → 2/3" { switch-preset-column-width; }
+    // ─── 布局：最大化与对齐 ───
+    Mod+R                         hotkey-overlay-title="最大化 / 还原当前列" { maximize-column; }
     Mod+C                         hotkey-overlay-title="当前列居中" { center-column; }
     Mod+Z                         hotkey-overlay-title="当前列靠左" { move-column-to-first; }
     Mod+X                         hotkey-overlay-title="当前列靠右" { move-column-to-last; }
-
-    // ─── 布局：全屏与分组 ───
-    Mod+F                         hotkey-overlay-title="全屏" { fullscreen-window; }
     Mod+W                         hotkey-overlay-title="标签式分组" { toggle-column-tabbed-display; }
 
     // ─── 总览 ───
@@ -82,19 +81,21 @@ binds {
 
     // ─── 截图 ───
     Print                         hotkey-overlay-title="区域截图" { screenshot; }
-    Ctrl+Print                    hotkey-overlay-title="全屏截图" { screenshot-screen; }
-    Alt+Print                     hotkey-overlay-title="窗口截图" { screenshot-window; }
+    Ctrl+Print                    hotkey-overlay-title=null { screenshot-screen; }
+    Alt+Print                     hotkey-overlay-title=null { screenshot-window; }
 
-    // ─── 媒体与亮度（XF86 功能键，不占用组合键）───
+    // ─── 媒体与亮度（XF86 硬件键）───
+    // 这些是键盘上的硬件功能键：照常生效，但用 hotkey-overlay-title=null 从
+    // Mod+/ 总览里隐去 —— 总览只留 Mod 组合键，硬件键本来就无需提示。
     // 播放键用 toggle：笔记本通常只有一个播放/暂停键，同时发 XF86AudioPlay。
-    XF86AudioRaiseVolume          allow-when-locked=true hotkey-overlay-title="音量增大" { spawn-sh "noctalia msg volume-up"; }
-    XF86AudioLowerVolume          allow-when-locked=true hotkey-overlay-title="音量减小" { spawn-sh "noctalia msg volume-down"; }
-    XF86AudioMute                 allow-when-locked=true hotkey-overlay-title="静音开关" { spawn-sh "noctalia msg volume-mute"; }
-    XF86AudioMicMute              allow-when-locked=true hotkey-overlay-title="麦克风静音" { spawn-sh "noctalia msg mic-mute"; }
-    XF86AudioPlay                 allow-when-locked=true hotkey-overlay-title="播放 / 暂停" { spawn-sh "noctalia msg media toggle"; }
-    XF86AudioNext                 allow-when-locked=true hotkey-overlay-title="下一首" { spawn-sh "noctalia msg media next"; }
-    XF86AudioPrev                 allow-when-locked=true hotkey-overlay-title="上一首" { spawn-sh "noctalia msg media previous"; }
-    XF86MonBrightnessUp           allow-when-locked=true hotkey-overlay-title="亮度增大" { spawn-sh "noctalia msg brightness-up"; }
-    XF86MonBrightnessDown         allow-when-locked=true hotkey-overlay-title="亮度减小" { spawn-sh "noctalia msg brightness-down"; }
+    XF86AudioRaiseVolume          allow-when-locked=true hotkey-overlay-title=null { spawn-sh "noctalia msg volume-up"; }
+    XF86AudioLowerVolume          allow-when-locked=true hotkey-overlay-title=null { spawn-sh "noctalia msg volume-down"; }
+    XF86AudioMute                 allow-when-locked=true hotkey-overlay-title=null { spawn-sh "noctalia msg volume-mute"; }
+    XF86AudioMicMute              allow-when-locked=true hotkey-overlay-title=null { spawn-sh "noctalia msg mic-mute"; }
+    XF86AudioPlay                 allow-when-locked=true hotkey-overlay-title=null { spawn-sh "noctalia msg media toggle"; }
+    XF86AudioNext                 allow-when-locked=true hotkey-overlay-title=null { spawn-sh "noctalia msg media next"; }
+    XF86AudioPrev                 allow-when-locked=true hotkey-overlay-title=null { spawn-sh "noctalia msg media previous"; }
+    XF86MonBrightnessUp           allow-when-locked=true hotkey-overlay-title=null { spawn-sh "noctalia msg brightness-up"; }
+    XF86MonBrightnessDown         allow-when-locked=true hotkey-overlay-title=null { spawn-sh "noctalia msg brightness-down"; }
 }
 """

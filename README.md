@@ -154,25 +154,15 @@ uv run nirice snapshot load snapshots/my-rice.pmz --install-deps
 | 导航 | `Mod+G` | 聚焦上一个窗口 |
 | 导航 | `Mod+K` | 同列上一个窗口 |
 | 导航 | `Mod+J` | 同列下一个窗口 |
-| 布局 | `Mod+R` | 循环列宽 1/3 → 1/2 → 2/3 |
+| 布局 | `Mod+R` | 最大化 / 还原当前列 |
 | 布局 | `Mod+C` | 当前列居中 |
 | 布局 | `Mod+Z` | 当前列靠左 |
 | 布局 | `Mod+X` | 当前列靠右 |
-| 布局 | `Mod+F` | 全屏 |
 | 布局 | `Mod+W` | 标签式分组 |
 | 总览 | `Mod+Tab` | 工作区总览 |
 | 截图 | `Print` | 区域截图 |
-| 截图 | `Ctrl+Print` | 全屏截图 |
-| 截图 | `Alt+Print` | 窗口截图 |
-| 媒体与亮度 | `XF86AudioRaiseVolume` | 音量增大 |
-| 媒体与亮度 | `XF86AudioLowerVolume` | 音量减小 |
-| 媒体与亮度 | `XF86AudioMute` | 静音开关 |
-| 媒体与亮度 | `XF86AudioMicMute` | 麦克风静音 |
-| 媒体与亮度 | `XF86AudioPlay` | 播放 / 暂停 |
-| 媒体与亮度 | `XF86AudioNext` | 下一首 |
-| 媒体与亮度 | `XF86AudioPrev` | 上一首 |
-| 媒体与亮度 | `XF86MonBrightnessUp` | 亮度增大 |
-| 媒体与亮度 | `XF86MonBrightnessDown` | 亮度减小 |
+
+键盘上的音量 / 亮度 / 媒体键照常生效，但用 `hotkey-overlay-title=null` 从 `Mod+/` 总览里隐去，因此不出现在上表 —— 硬件功能键不需要提示。
 
 ### Kitty 快捷键
 `Ctrl+Shift+T` 新建 Tab、`Ctrl+Shift+W` 关闭、`Ctrl+Shift+←/→` 切换 Tab、`Ctrl+Shift+Enter` 分屏、`Ctrl+Shift+H/J/K/L` 分屏导航、`Ctrl+Shift+U/O` 实时调透明度、`Ctrl+Shift+Delete` 恢复默认。

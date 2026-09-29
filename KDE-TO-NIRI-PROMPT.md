@@ -639,7 +639,7 @@ ls ~/.config | grep -iE 'kde|kwin|plasma' || echo "无 KDE 配置残留"
    - 状态栏出现在**屏幕左侧**（不是顶部）
    - `Mod+T` 打开 kitty，且字体字距正常、背景半透明磨砂
    - `Mod+Left` / `Mod+Right` 跨列聚焦，`Mod+Up` / `Mod+Down` 跨工作区，`Mod+K` / `Mod+J` 列内切换窗口
-   - `Mod+R` 在预设列宽间循环（1/3 → 1/2 → 2/3），`Mod+F` 全屏
+   - `Mod+R` 最大化 / 还原当前列，`Mod+C` 居中、`Mod+Z` 靠左、`Mod+X` 靠右
    - `Mod+P` 切换浮动与平铺，`Mod+Tab` 打开总览
    - 截图、文件选择器（打开/保存对话框）、剪贴板历史、Wi-Fi/蓝牙/音量小组件均可用
 

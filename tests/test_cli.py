@@ -64,8 +64,11 @@ def test_niri_animations_listing() -> None:
         assert preset in result.output
 
 
-def test_niri_keybinds_listing() -> None:
-    """展示表必须由 binds 块实时解析，不能是会与预设分叉的硬编码副本。"""
+def test_niri_keybinds_listing(xdg: dict[str, Path]) -> None:
+    """展示表必须由 binds 块实时解析，并与 Mod+/ 总览一致。
+
+    用隔离的 XDG 环境，让命令回退到 nirice 预设，而不是开发机的实时配置。
+    """
     import re
 
     from nirice.niri.catalog import MANAGED_FRAGMENTS
@@ -74,12 +77,18 @@ def test_niri_keybinds_listing() -> None:
     assert result.exit_code == 0
     assert "Mod + R" in result.output
 
-    titles = re.findall(r'hotkey-overlay-title="([^"]+)"', MANAGED_FRAGMENTS["keybinds.kdl"])
+    kdl = MANAGED_FRAGMENTS["keybinds.kdl"]
+    titles = re.findall(r'hotkey-overlay-title="([^"]+)"', kdl)
     assert titles, "预设中应存在中文标题"
-    # 去掉换行，避免 rich 单元格折行导致误判
-    flat = result.output.replace("\n", "")
-    missing = [title for title in titles if title not in flat]
+
+    # rich 会按列宽折行并吃掉换行处的空格，比较前抹掉所有空白
+    flat = re.sub(r"\s+", "", result.output)
+    missing = [t for t in titles if re.sub(r"\s+", "", t) not in flat]
     assert not missing, f"快捷键总览缺少以下条目: {missing}"
+
+    # 显式从总览隐去的绑定不得出现在表里
+    assert "XF86AudioRaiseVolume" not in result.output
+    assert "Ctrl + Print" not in result.output
 
 
 def test_niri_keybinds_dump(tmp_path: Path) -> None:

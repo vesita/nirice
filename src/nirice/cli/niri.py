@@ -15,8 +15,9 @@ from nirice.niri.catalog import MANAGED_FRAGMENTS
 app = typer.Typer(help="管理 Niri 合成器配置：快捷键、动效、布局、校验与热重载。")
 
 def _keybind_rows(text: str) -> list[tuple[str, str]]:
-    """从 binds 块解析出 (按键组合, 中文标题)。
+    """从 binds 块解析出 (按键组合, 中文标题)，镜像 Mod+/ 总览所见。
 
+    带 `hotkey-overlay-title=null` 的绑定是刻意从总览里隐去的，这里同样不列出。
     展示内容直接来自预设本身，避免再维护一份会和预设分叉的硬编码清单。
     """
     body = text.split("binds {", 1)[1].rsplit("}", 1)[0]
@@ -26,6 +27,8 @@ def _keybind_rows(text: str) -> list[tuple[str, str]]:
         if not line or line.startswith("//") or "{" not in line:
             continue
         head = line.split("{", 1)[0]
+        if "hotkey-overlay-title=null" in head:
+            continue
         combo = head.split()[0]
         marker = 'hotkey-overlay-title="'
         title = head.split(marker, 1)[1].split('"', 1)[0] if marker in head else ""

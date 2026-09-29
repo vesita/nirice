@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -46,17 +47,21 @@ def _binding_actions(text: str) -> dict[str, str]:
 
 
 def _binding_titles(text: str) -> dict[str, str]:
-    """提取 binds 块中「按键组合 -> hotkey-overlay-title」映射。"""
+    """提取 binds 块中「按键组合 -> hotkey-overlay-title」映射。
+
+    带 `hotkey-overlay-title=null` 的绑定是刻意从总览里隐去的，不收录。
+    """
     body = text.split("binds {", 1)[1].rsplit("}", 1)[0]
     titles: dict[str, str] = {}
-    marker = 'hotkey-overlay-title="'
+    marker = re.compile(r'hotkey-overlay-title="([^"]*)"')
     for raw in body.splitlines():
         line = raw.strip()
         if not line or line.startswith("//") or "{" not in line:
             continue
         head = line.split("{", 1)[0]
-        combo = head.split()[0]
-        titles[combo] = head.split(marker, 1)[1].split('"', 1)[0] if marker in head else ""
+        match = marker.search(head)
+        if match:
+            titles[head.split()[0]] = match.group(1)
     return titles
 
 
@@ -81,13 +86,17 @@ def test_managed_fragments_cover_expected_files() -> None:
 def test_keybinds_meet_user_requirements() -> None:
     """用户明确要求保留的快捷键必须存在。"""
     binds = MANAGED_FRAGMENTS["keybinds.kdl"]
+    actions = _binding_actions(binds)
+
     assert "Mod+T" in binds and 'spawn "kitty"' in binds
     assert "Mod+Q" in binds and "close-window" in binds
-    assert "Mod+R" in binds and "switch-preset-column-width" in binds
+    # Mod+R 要的是"最大化窗口"，不是循环列宽
+    assert actions["Mod+R"] == "maximize-column"
     assert "Mod+D" in binds and "panel-toggle launcher" in binds
     assert "Mod+V" in binds and "panel-toggle clipboard" in binds
     assert "focus-workspace-up" in binds and "focus-workspace-down" in binds
-    assert "fullscreen-window" in binds
+    # 全屏已按用户要求移除
+    assert "fullscreen-window" not in binds
 
 
 def test_in_column_navigation_has_no_arrow_equivalent() -> None:
@@ -157,21 +166,23 @@ def test_keybinds_have_no_duplicate_combinations() -> None:
 
 
 def test_every_keybind_has_a_chinese_overlay_title() -> None:
-    """niri 的 overlay 文案是硬编码英文且没有本地化文件，必须逐条给中文标题。
+    """总览里出现的绑定必须有中文标题。
 
-    少写一条，Mod+/ 弹出的总览里就会出现英文混排。
+    niri 的 overlay 文案是硬编码英文且没有本地化文件，少写一条就会出现英文混排。
+    不想出现在总览里的绑定（如 XF86 硬件功能键）必须显式写
+    `hotkey-overlay-title=null`，那才算「已处理」，而不是漏写。
     """
-    import re as _re
-
     body = MANAGED_FRAGMENTS["keybinds.kdl"].split("binds {", 1)[1].rsplit("}", 1)[0]
     missing: list[str] = []
     for raw in body.splitlines():
         line = raw.strip()
         if not line or line.startswith("//") or "{" not in line:
             continue
+        if "hotkey-overlay-title=null" in line:
+            continue  # 显式从总览隐去
         if "hotkey-overlay-title=" not in line:
             missing.append(line.split("{", 1)[0].strip())
-        elif not _re.search(r"[\u4e00-\u9fff]", line):
+        elif not re.search(r"[\u4e00-\u9fff]", line):
             missing.append(f"{line.split('{', 1)[0].strip()} (标题非中文)")
     assert not missing, f"以下绑定缺少中文标题，overlay 会显示英文: {missing}"
 
