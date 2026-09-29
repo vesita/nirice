@@ -14,28 +14,23 @@ from nirice.niri.catalog import MANAGED_FRAGMENTS
 
 app = typer.Typer(help="管理 Niri 合成器配置：快捷键、动效、布局、校验与热重载。")
 
-HIGHLIGHTS = [
-    ("Mod + T / Return", "打开终端 (kitty)"),
-    ("Mod + /", "查看 niri 全部快捷键提示 (Hotkey Overlay)"),
-    ("Mod + ← / →", "在当前行的列之间左右聚焦"),
-    ("Mod + ↑ / ↓", "上下切换工作区（切页）"),
-    ("Mod + K / J", "同一列内的上下窗口"),
-    ("Mod + Ctrl + ← → ↑ ↓", "移动列 / 移动列内窗口"),
-    ("Mod + R", "循环预设列宽（1/3 → 1/2 → 2/3）"),
-    ("Mod + F", "最大化当前列"),
-    ("Mod + C", "当前列居中"),
-    ("Mod + Alt + ← / →", "吸附到最左 / 最右（50% 宽 + 移动）"),
-    ("Mod + Alt + ↑ / ↓", "居中 / 扩展到可用宽度"),
-    ("Mod + Shift + F", "真全屏"),
-    ("Mod + V", "切换浮动窗口"),
-    ("Mod + Q", "关闭窗口"),
-    ("Mod + 1..9 / Mod + Ctrl + 1..9", "切换工作区 / 把列移到工作区"),
-    ("Mod + Tab", "总览 (Overview)"),
-    ("Mod + D / Space", "Noctalia 应用启动器"),
-    ("Mod + S / Mod + Shift + S", "控制中心 / 系统设置"),
-    ("Mod + Ctrl + V", "剪贴板历史"),
-    ("Mod + Escape", "紧急解除快捷键抑制"),
-]
+def _keybind_rows(text: str) -> list[tuple[str, str]]:
+    """从 binds 块解析出 (按键组合, 中文标题)。
+
+    展示内容直接来自预设本身，避免再维护一份会和预设分叉的硬编码清单。
+    """
+    body = text.split("binds {", 1)[1].rsplit("}", 1)[0]
+    rows: list[tuple[str, str]] = []
+    for raw in body.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("//") or "{" not in line:
+            continue
+        head = line.split("{", 1)[0]
+        combo = head.split()[0]
+        marker = 'hotkey-overlay-title="'
+        title = head.split(marker, 1)[1].split('"', 1)[0] if marker in head else ""
+        rows.append((" + ".join(combo.split("+")), title))
+    return rows
 
 
 def _apply_and_reload(ctl: NiriController) -> None:
@@ -133,9 +128,9 @@ def niri_keybinds(
         return
 
     table = Table(title="[bold cyan]⌨️  nirice Niri 快捷键设计[/bold cyan]", header_style="bold blue")
-    table.add_column("快捷键", style="bold yellow", width=24)
+    table.add_column("快捷键", style="bold yellow", width=26)
     table.add_column("动作", style="white")
-    for key, action in HIGHLIGHTS:
+    for key, action in _keybind_rows(content):
         table.add_row(key, action)
     console.print(table)
     console.print("[dim]加 --dump 可导出完整 KDL 后自行微调。[/dim]")

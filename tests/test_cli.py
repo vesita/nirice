@@ -65,10 +65,21 @@ def test_niri_animations_listing() -> None:
 
 
 def test_niri_keybinds_listing() -> None:
+    """展示表必须由 binds 块实时解析，不能是会与预设分叉的硬编码副本。"""
+    import re
+
+    from nirice.niri.catalog import MANAGED_FRAGMENTS
+
     result = runner.invoke(app, ["niri", "keybinds"])
     assert result.exit_code == 0
     assert "Mod + R" in result.output
-    assert "最大化" in result.output
+
+    titles = re.findall(r'hotkey-overlay-title="([^"]+)"', MANAGED_FRAGMENTS["keybinds.kdl"])
+    assert titles, "预设中应存在中文标题"
+    # 去掉换行，避免 rich 单元格折行导致误判
+    flat = result.output.replace("\n", "")
+    missing = [title for title in titles if title not in flat]
+    assert not missing, f"快捷键总览缺少以下条目: {missing}"
 
 
 def test_niri_keybinds_dump(tmp_path: Path) -> None:

@@ -46,16 +46,37 @@ def test_managed_fragments_cover_expected_files() -> None:
 
 
 def test_keybinds_meet_user_requirements() -> None:
-    """用户明确要求的快捷键必须存在。"""
+    """用户明确要求保留的快捷键必须存在。"""
     binds = MANAGED_FRAGMENTS["keybinds.kdl"]
     assert "Mod+T" in binds and 'spawn "kitty"' in binds
-    assert "maximize-column" in binds
-    assert "Mod+R" in binds
-    assert "center-column" in binds
-    assert "move-column-to-first" in binds
-    assert "move-column-to-last" in binds
-    # niri 一键只允许一个动作，侧边吸附必须走 spawn-sh 串联
-    assert "niri msg action" in binds
+    assert "Mod+Q" in binds and "close-window" in binds
+    assert "Mod+R" in binds and "switch-preset-column-width" in binds
+    assert "Mod+D" in binds and "panel-toggle launcher" in binds
+    assert "Mod+V" in binds and "panel-toggle clipboard" in binds
+    assert "focus-workspace-up" in binds and "focus-workspace-down" in binds
+    assert "fullscreen-window" in binds
+
+
+def test_in_column_navigation_has_no_arrow_equivalent() -> None:
+    """列内窗口导航只能靠 K/J —— 方向键那两组管的是跨列与跨工作区。
+
+    所以 K/J 不是 HJKL 别名，删掉它们会彻底失去列内切窗口与调序的能力。
+    """
+    body = MANAGED_FRAGMENTS["keybinds.kdl"].split("binds {", 1)[1].rsplit("}", 1)[0]
+    lines = [ln.strip() for ln in body.splitlines()]
+    lines = [ln for ln in lines if ln and not ln.startswith("//")]
+
+    def action_of(combo: str) -> str:
+        match = next(ln for ln in lines if ln.startswith(f"{combo} "))
+        return match.split("{", 1)[1].split(";", 1)[0].strip()
+
+    assert action_of("Mod+K") == "focus-window-up"
+    assert action_of("Mod+J") == "focus-window-down"
+    assert action_of("Mod+Ctrl+K") == "move-window-up"
+    assert action_of("Mod+Ctrl+J") == "move-window-down"
+    # 方向键承载的是另一层语义，两组不可互换
+    assert action_of("Mod+Up") == "focus-workspace-up"
+    assert action_of("Mod+Down") == "focus-workspace-down"
 
 
 def test_animation_presets_are_valid_kdl_blocks() -> None:
@@ -68,7 +89,7 @@ def test_animation_presets_are_valid_kdl_blocks() -> None:
 def test_keybinds_have_no_duplicate_combinations() -> None:
     """niri 中修饰键顺序无意义，Mod+A+B 与 Mod+B+A 是同一个键，必须查重。"""
     combos = _binding_combos(MANAGED_FRAGMENTS["keybinds.kdl"])
-    assert len(combos) > 50, f"应解析出大量绑定，实际 {len(combos)}"
+    assert len(combos) > 30, f"应解析出大量绑定，实际 {len(combos)}"
     duplicates = sorted({c for c in combos if combos.count(c) > 1})
     assert not duplicates, f"存在重复的按键组合: {duplicates}"
 

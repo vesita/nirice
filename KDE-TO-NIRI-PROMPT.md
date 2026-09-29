@@ -239,107 +239,18 @@ output "eDP-1" {
 
 若不确定，**先把 output 块整段注释掉**，让 niri 用默认值，之后再调。
 
-### 4.3 快捷键（按用户明确需求设计）
+### 4.3 快捷键
 
-**关键限制**：niri **一个快捷键只允许一个动作**。多步骤操作必须通过 `spawn-sh` 调用 `niri msg action` 串联，例如侧边吸附：
+niri **一个快捷键只允许一个动作**，多步操作需要在一条 `spawn-sh` 里串联 `niri msg action`。
 
-```kdl
-Mod+Alt+Left  { spawn-sh "niri msg action set-column-width 50% && niri msg action move-column-to-first"; }
+快捷键由 nirice 统一管理：
+
+```bash
+nirice niri apply    # 写入默认绑定并热重载
+nirice niri check    # niri validate 语法校验
 ```
 
-用户明确要求：
-
-| 需求 | 绑定 |
-| --- | --- |
-| 用 `Mod+T` 唤起终端（保留旧习惯） | `Mod+T` → `spawn "kitty"`（`Mod+Return` 可同时保留） |
-| 用 `Mod+上下左右` 在窗口间导航 | `Mod+←→↑↓` → `focus-column-*` / `focus-window-*` |
-| `Mod+R` 让窗口占满整列（即原来的 `Mod+F` 语义） | `Mod+R` → `maximize-column` |
-| 窗口居中的快捷键 | `Mod+C` → `center-column` |
-| 窗口对齐左/右侧的快捷键 | `Mod+Alt+←` → 50% 宽 + `move-column-to-first`；`Mod+Alt+→` → 50% 宽 + `move-column-to-last` |
-
-参考实现（可直接采用，再按喜好微调）：
-
-```kdl
-binds {
-    // 紧急逃生：全屏应用卡住快捷键时恢复控制
-    Mod+Escape allow-inhibiting=false { toggle-keyboard-shortcuts-inhibit; }
-
-    // 应用
-    Mod+T      repeat=false { spawn "kitty"; }
-    Mod+Return repeat=false { spawn "kitty"; }
-    Mod+B      repeat=false { spawn "firefox"; }
-    Mod+E      repeat=false { spawn "nautilus"; }
-
-    // Noctalia 外壳
-    Mod+D          repeat=false { spawn-sh "noctalia msg panel-toggle launcher"; }
-    Mod+Space      repeat=false { spawn-sh "noctalia msg panel-toggle launcher"; }
-    Mod+S          repeat=false { spawn-sh "noctalia msg panel-toggle control-center"; }
-    Mod+Shift+S    repeat=false { spawn-sh "noctalia msg settings-toggle"; }
-    Mod+Shift+Q    repeat=false { spawn-sh "noctalia msg panel-toggle session"; }
-    Mod+Alt+L      repeat=false { spawn-sh "noctalia msg session lock"; }
-    Mod+Ctrl+V     repeat=false { spawn-sh "noctalia msg panel-toggle clipboard"; }
-
-    // 窗口导航（方向键 + HJKL）
-    Mod+Left  { focus-column-left; }
-    Mod+H     { focus-column-left; }
-    Mod+Right { focus-column-right; }
-    Mod+L     { focus-column-right; }
-    Mod+Up    { focus-window-up-or-column-left; }
-    Mod+K     { focus-window-up-or-column-left; }
-    Mod+Down  { focus-window-down-or-column-right; }
-    Mod+J     { focus-window-down-or-column-right; }
-
-    // 移动窗口/列
-    Mod+Ctrl+Left  { move-column-left; }
-    Mod+Ctrl+Right { move-column-right; }
-    Mod+Ctrl+Up    { move-window-up; }
-    Mod+Ctrl+Down  { move-window-down; }
-
-    // 最大化 / 全屏
-    Mod+R     { maximize-column; }
-    Mod+F     { maximize-column; }
-    Mod+Shift+F { fullscreen-window; }
-    Mod+M     { maximize-window-to-edges; }
-
-    // 列宽循环（1/3 → 1/2 → 2/3）
-    Mod+Shift+R { switch-preset-column-width; }
-    Mod+Ctrl+R  { switch-preset-column-width-back; }
-    Mod+Minus   { set-column-width "-10%"; }
-    Mod+Equal   { set-column-width "+10%"; }
-
-    // 居中与侧边对齐
-    Mod+C         { center-column; }
-    Mod+Shift+C   { center-visible-columns; }
-    Mod+Alt+Up    { center-column; }
-    Mod+Alt+Left  { spawn-sh "niri msg action set-column-width 50% && niri msg action move-column-to-first"; }
-    Mod+Alt+Right { spawn-sh "niri msg action set-column-width 50% && niri msg action move-column-to-last"; }
-    Mod+Alt+Down  { expand-column-to-available-width; }
-
-    // 浮动 / 标签列
-    Mod+V       { toggle-window-floating; }
-    Mod+Shift+V { switch-focus-between-floating-and-tiling; }
-    Mod+W       { toggle-column-tabbed-display; }
-
-    // 工作区
-    Mod+1..9        → { focus-workspace N; }
-    Mod+Ctrl+1..9   → { move-column-to-workspace N; }
-    Mod+Tab         { focus-workspace-previous; }
-    Mod+WheelScrollDown cooldown-ms=150 { focus-workspace-down; }
-    Mod+WheelScrollUp   cooldown-ms=150 { focus-workspace-up; }
-
-    // 截图
-    Print        { screenshot; }
-    Ctrl+Print   { screenshot-screen; }
-    Alt+Print    { screenshot-window; }
-
-    // 总览 / 电源
-    Mod+O       repeat=false { toggle-overview; }
-    Mod+Shift+P { power-off-monitors; }
-    Ctrl+Alt+Delete { quit; }
-}
-```
-
-> 注意：上面 `Mod+1..9` 是简写，实际要逐条写出 1 到 9（niri 不支持区间语法）。
+完整默认表见 [README.md](README.md) 的「默认快捷键设计」一节。若要手写 `cfg/keybinds.kdl`，只写需要调整的几条，不要整份复制，避免与 nirice 预设分叉（`nirice niri apply --no-keybinds` 可跳过快捷键）。
 
 ### 4.4 其他片段要点
 
@@ -727,9 +638,9 @@ ls ~/.config | grep -iE 'kde|kwin|plasma' || echo "无 KDE 配置残留"
 3. 登录后确认：
    - 状态栏出现在**屏幕左侧**（不是顶部）
    - `Mod+T` 打开 kitty，且字体字距正常、背景半透明磨砂
-   - `Mod+方向键` 在窗口间导航
-   - `Mod+R` 让窗口占满整列
-   - `Mod+C` 居中，`Mod+Alt+←/→` 吸附左右半屏
+   - `Mod+←` / `Mod+→` 跨列聚焦，`Mod+↑` / `Mod+↓` 跨工作区，`Mod+K` / `Mod+J` 列内切换窗口
+   - `Mod+R` 在预设列宽间循环（1/3 → 1/2 → 2/3），`Mod+Shift+F` 真全屏
+   - `Mod+Shift+V` 切换浮动与平铺，`Mod+Tab` 打开总览
    - 截图、文件选择器（打开/保存对话框）、剪贴板历史、Wi-Fi/蓝牙/音量小组件均可用
 
 ---
