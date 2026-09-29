@@ -73,6 +73,26 @@ def test_keybinds_have_no_duplicate_combinations() -> None:
     assert not duplicates, f"存在重复的按键组合: {duplicates}"
 
 
+def test_every_keybind_has_a_chinese_overlay_title() -> None:
+    """niri 的 overlay 文案是硬编码英文且没有本地化文件，必须逐条给中文标题。
+
+    少写一条，Mod+/ 弹出的总览里就会出现英文混排。
+    """
+    import re as _re
+
+    body = MANAGED_FRAGMENTS["keybinds.kdl"].split("binds {", 1)[1].rsplit("}", 1)[0]
+    missing: list[str] = []
+    for raw in body.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("//") or "{" not in line:
+            continue
+        if "hotkey-overlay-title=" not in line:
+            missing.append(line.split("{", 1)[0].strip())
+        elif not _re.search(r"[\u4e00-\u9fff]", line):
+            missing.append(f"{line.split('{', 1)[0].strip()} (标题非中文)")
+    assert not missing, f"以下绑定缺少中文标题，overlay 会显示英文: {missing}"
+
+
 def test_default_column_width_is_not_forced() -> None:
     """刻意不设置 default-column-width，保持 niri 原生开窗宽度。"""
     layout = MANAGED_FRAGMENTS["layout.kdl"]
