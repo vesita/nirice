@@ -33,7 +33,10 @@ input {
         // accel-speed 0.0
     }
 
-    focus-follows-mouse
+    // 刻意不启用 focus-follows-mouse：鼠标划过窗口就会抢走焦点，
+    // 在滚动平铺下很容易误切窗口。需要时取消下面这行注释即可。
+    // focus-follows-mouse
+
     workspace-auto-back-and-forth
 }
 """

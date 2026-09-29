@@ -45,6 +45,8 @@ TRACKED_TARGETS: list[tuple[str, str]] = [
     ("config", "environment.d"),
     ("config", "xdg-desktop-portal"),
     ("config", "fcitx5"),
+    # fcitx5 的自定义皮肤在 data 目录，不在 config 目录，必须单独纳入
+    ("data", "fcitx5/themes"),
     ("config", "mimeapps.list"),
     ("home", ".vscode/argv.json"),
 ]

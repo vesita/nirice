@@ -3,6 +3,9 @@
 niri 的 hotkey overlay **没有本地化**：文案硬编码在二进制里，没有翻译文件，
 设置 LANG 也无效。因此这里给每一条绑定都显式加上 `hotkey-overlay-title`，
 让 Mod+/ 弹出的快捷键总览完全显示中文。
+
+设计取舍：只保留高频且直觉的绑定，偏门动作（吞并窗口、交换窗口、窗口化全屏、
+窗高预设、多显示器搬运等）一律移除，避免占用组合键。
 """
 
 from __future__ import annotations
@@ -24,6 +27,7 @@ binds {
 
     // ─── 窗口操作 ───
     Mod+Q                         hotkey-overlay-title="关闭窗口" { close-window; }
+    Mod+Shift+V                   hotkey-overlay-title="在浮动与平铺之间切换" { toggle-window-floating; }
 
     // ─── 应用启动 ───
     Mod+T                         repeat=false hotkey-overlay-title="终端：kitty" { spawn "kitty"; }
@@ -40,7 +44,7 @@ binds {
     Mod+Shift+Return              repeat=false hotkey-overlay-title="壁纸选择器" { spawn-sh "noctalia msg panel-toggle wallpaper"; }
     Mod+Shift+Q                   repeat=false hotkey-overlay-title="会话菜单（关机 / 重启）" { spawn-sh "noctalia msg panel-toggle session"; }
     Mod+Alt+L                     repeat=false hotkey-overlay-title="锁定屏幕" { spawn-sh "noctalia msg session lock"; }
-    Mod+Ctrl+V                    repeat=false hotkey-overlay-title="剪贴板历史" { spawn-sh "noctalia msg panel-toggle clipboard"; }
+    Mod+V                         repeat=false hotkey-overlay-title="剪贴板历史" { spawn-sh "noctalia msg panel-toggle clipboard"; }
     Mod+Ctrl+N                    repeat=false hotkey-overlay-title="切换免打扰模式" { spawn-sh "noctalia msg notification-dnd-toggle"; }
     Mod+Grave                     repeat=false hotkey-overlay-title="窗口切换器" { spawn-sh "noctalia msg window-switcher"; }
 
@@ -55,8 +59,6 @@ binds {
     XF86AudioPause                allow-when-locked=true hotkey-overlay-title="暂停" { spawn-sh "noctalia msg media stop"; }
     XF86MonBrightnessUp           allow-when-locked=true hotkey-overlay-title="屏幕亮度增大" { spawn-sh "noctalia msg brightness-up"; }
     XF86MonBrightnessDown         allow-when-locked=true hotkey-overlay-title="屏幕亮度减小" { spawn-sh "noctalia msg brightness-down"; }
-    XF86KbdBrightnessUp           allow-when-locked=true hotkey-overlay-title="键盘背光增大" { spawn-sh "noctalia msg keyboard-backlight-up"; }
-    XF86KbdBrightnessDown         allow-when-locked=true hotkey-overlay-title="键盘背光减小" { spawn-sh "noctalia msg keyboard-backlight-down"; }
 
     // ─── 横向导航：列 ───
     Mod+Left                      hotkey-overlay-title="聚焦左侧一列" { focus-column-left; }
@@ -67,13 +69,10 @@ binds {
     Mod+End                       hotkey-overlay-title="跳到最后一列" { focus-column-last; }
     Mod+G                         hotkey-overlay-title="回到上一个聚焦的窗口" { focus-window-previous; }
 
-    // ─── 上下切页：工作区（Mod+上下，与旧的 Mod+Tab 语义一致）───
-    // 方向对应关系：上/下 = 上/下一个工作区，左/右 = 上/下一列。
+    // ─── 上下切页：工作区（Mod+上下）───
+    // 上/下 = 上/下一个工作区；左/右 = 上/下一列。
     Mod+Up                        hotkey-overlay-title="上一个工作区" { focus-workspace-up; }
     Mod+Down                      hotkey-overlay-title="下一个工作区" { focus-workspace-down; }
-    Mod+Page_Up                   hotkey-overlay-title="上一个工作区" { focus-workspace-up; }
-    Mod+Page_Down                 hotkey-overlay-title="下一个工作区" { focus-workspace-down; }
-    Mod+Shift+Tab                 hotkey-overlay-title="回到上一个工作区" { focus-workspace-previous; }
 
     // ─── 列内上下窗口：Mod+K / Mod+J ───
     // 不要用 focus-window-up-or-column-left —— 列内没有上层窗口时它会自动
@@ -88,21 +87,10 @@ binds {
     Mod+Ctrl+L                    hotkey-overlay-title="整列右移" { move-column-right; }
     Mod+Ctrl+Up                   hotkey-overlay-title="整列移到上一个工作区" { move-column-to-workspace-up; }
     Mod+Ctrl+Down                 hotkey-overlay-title="整列移到下一个工作区" { move-column-to-workspace-down; }
-    Mod+Ctrl+Page_Up              hotkey-overlay-title="整列移到上一个工作区" { move-column-to-workspace-up; }
-    Mod+Ctrl+Page_Down            hotkey-overlay-title="整列移到下一个工作区" { move-column-to-workspace-down; }
     Mod+Ctrl+K                    hotkey-overlay-title="列内窗口上移" { move-window-up; }
     Mod+Ctrl+J                    hotkey-overlay-title="列内窗口下移" { move-window-down; }
     Mod+Ctrl+Home                 hotkey-overlay-title="整列移到最左" { move-column-to-first; }
     Mod+Ctrl+End                  hotkey-overlay-title="整列移到最右" { move-column-to-last; }
-    Mod+Ctrl+Shift+H              hotkey-overlay-title="与右邻窗口交换位置" { swap-window-right; }
-
-    // ─── 多显示器 ───
-    Mod+Shift+Left                hotkey-overlay-title="聚焦左侧显示器" { focus-monitor-left; }
-    Mod+Shift+Right               hotkey-overlay-title="聚焦右侧显示器" { focus-monitor-right; }
-    Mod+Shift+Ctrl+Left           hotkey-overlay-title="整列移到左侧显示器" { move-column-to-monitor-left; }
-    Mod+Shift+Ctrl+Right          hotkey-overlay-title="整列移到右侧显示器" { move-column-to-monitor-right; }
-    Mod+Shift+Ctrl+Up             hotkey-overlay-title="整列移到上方显示器" { move-column-to-monitor-up; }
-    Mod+Shift+Ctrl+Down           hotkey-overlay-title="整列移到下方显示器" { move-column-to-monitor-down; }
 
     // ─── 布局：窗口尺寸 ───
     // Mod+R 在预设列宽之间循环：1/3 → 1/2 → 2/3
@@ -112,35 +100,19 @@ binds {
     Mod+Equal                     hotkey-overlay-title="列宽增大 10%" { set-column-width "+10%"; }
     Mod+Shift+Minus               hotkey-overlay-title="窗口高度减小 10%" { set-window-height "-10%"; }
     Mod+Shift+Equal               hotkey-overlay-title="窗口高度增大 10%" { set-window-height "+10%"; }
-    Mod+Ctrl+Shift+R              hotkey-overlay-title="循环预设窗口高度" { switch-preset-window-height; }
-    Mod+Ctrl+R                    hotkey-overlay-title="重置窗口高度" { reset-window-height; }
 
-    // ─── 布局：最大化与全屏 ───
+    // ─── 布局：最大化 / 全屏 / 居中 / 对齐 ───
     Mod+F                         hotkey-overlay-title="最大化当前列" { maximize-column; }
     Mod+Shift+F                   hotkey-overlay-title="真全屏" { fullscreen-window; }
-    Mod+Shift+D                   hotkey-overlay-title="窗口化全屏（保留边框）" { toggle-windowed-fullscreen; }
-    Mod+M                         hotkey-overlay-title="最大化到屏幕边缘" { maximize-window-to-edges; }
-    Mod+Shift+M                   hotkey-overlay-title="扩展到可用宽度" { expand-column-to-available-width; }
-
-    // ─── 布局：居中与侧边对齐 ───
-    // niri 是滚动平铺模型，"对齐侧边" = 先设宽 50% 再移动到条带最左/最右
     Mod+C                         hotkey-overlay-title="当前列居中" { center-column; }
     Mod+Shift+C                   hotkey-overlay-title="所有可见列居中" { center-visible-columns; }
-    Mod+Alt+Up                    hotkey-overlay-title="当前列居中" { center-column; }
-    Mod+Alt+Down                  hotkey-overlay-title="扩展到可用宽度" { expand-column-to-available-width; }
+    Mod+Shift+M                   hotkey-overlay-title="扩展到可用宽度" { expand-column-to-available-width; }
+    // niri 是滚动平铺模型，"对齐侧边" = 先设宽 50% 再移动到条带最左/最右
     Mod+Alt+Left                  repeat=false hotkey-overlay-title="吸附到左半屏（50% 宽 + 移到最左）" { spawn-sh "niri msg action set-column-width 50% && niri msg action move-column-to-first"; }
     Mod+Alt+Right                 repeat=false hotkey-overlay-title="吸附到右半屏（50% 宽 + 移到最右）" { spawn-sh "niri msg action set-column-width 50% && niri msg action move-column-to-last"; }
 
-    // ─── 列组合与标签 ───
-    Mod+BracketLeft               hotkey-overlay-title="把左邻窗口吞进本列" { consume-or-expel-window-left; }
-    Mod+BracketRight              hotkey-overlay-title="把右邻窗口吞进本列" { consume-or-expel-window-right; }
-    Mod+Comma                     hotkey-overlay-title="把窗口并入当前列" { consume-window-into-column; }
-    Mod+Period                    hotkey-overlay-title="把窗口移出当前列" { expel-window-from-column; }
+    // ─── 标签式列显示 ───
     Mod+W                         hotkey-overlay-title="切换标签式列显示" { toggle-column-tabbed-display; }
-
-    // ─── 浮动窗口 ───
-    Mod+V                         hotkey-overlay-title="在浮动与平铺之间切换" { toggle-window-floating; }
-    Mod+Shift+V                   hotkey-overlay-title="在浮动与平铺之间切换焦点" { switch-focus-between-floating-and-tiling; }
 
     // ─── 工作区：滚轮与数字键 ───
     Mod+WheelScrollDown           cooldown-ms=150 hotkey-overlay-title="下一个工作区" { focus-workspace-down; }
@@ -149,8 +121,6 @@ binds {
     Mod+Ctrl+WheelScrollUp        cooldown-ms=150 hotkey-overlay-title="整列移到上一个工作区" { move-column-to-workspace-up; }
     Mod+WheelScrollRight          hotkey-overlay-title="聚焦右侧一列" { focus-column-right; }
     Mod+WheelScrollLeft           hotkey-overlay-title="聚焦左侧一列" { focus-column-left; }
-    Mod+Ctrl+WheelScrollRight     hotkey-overlay-title="整列右移" { move-column-right; }
-    Mod+Ctrl+WheelScrollLeft      hotkey-overlay-title="整列左移" { move-column-left; }
     Mod+Shift+WheelScrollDown     hotkey-overlay-title="聚焦右侧一列" { focus-column-right; }
     Mod+Shift+WheelScrollUp       hotkey-overlay-title="聚焦左侧一列" { focus-column-left; }
 
@@ -177,12 +147,8 @@ binds {
     Print                         hotkey-overlay-title="截图（交互式选区）" { screenshot; }
     Ctrl+Print                    hotkey-overlay-title="截取整个屏幕" { screenshot-screen; }
     Alt+Print                     hotkey-overlay-title="截取当前窗口" { screenshot-window; }
-    Mod+Shift+1                   hotkey-overlay-title="截图（交互式选区）" { screenshot; }
-    Mod+Shift+2                   hotkey-overlay-title="截取整个屏幕" { screenshot-screen; }
-    Mod+Shift+3                   hotkey-overlay-title="截取当前窗口" { screenshot-window; }
 
     // ─── 总览与电源 ───
-    // 总览原本在 Mod+O，已按要求挪到 Mod+Tab；Mod+O 不再绑定。
     Mod+Tab                       repeat=false hotkey-overlay-title="总览 Overview（所有工作区）" { toggle-overview; }
     Mod+Shift+P                   hotkey-overlay-title="关闭显示器" { power-off-monitors; }
     Ctrl+Alt+Delete               hotkey-overlay-title="退出 niri" { quit; }
