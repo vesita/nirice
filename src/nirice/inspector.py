@@ -94,7 +94,13 @@ class DesktopInspector:
         keybind_count = _count_keybinds(keybinds)
 
         detected = self.term.detect_installed_terminals()
-        installed = [key.capitalize() for key, ok in detected.items() if ok and key not in ("starship", "fastfetch")]
+        # 「已安装」以二进制为准：只剩配置目录的（例如卸载后残留的 alacritty）不算装了。
+        # detect_installed_terminals 连配置目录一起算，是为了决定「要不要写配置」，语义不同。
+        installed = [
+            key.capitalize()
+            for key in detected
+            if key not in ("starship", "fastfetch") and shutil.which(key)
+        ]
 
         enabled_templates = self.noctalia.get_enabled_templates()
         palette, mode = self.noctalia.get_theme()

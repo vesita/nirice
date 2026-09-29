@@ -75,4 +75,5 @@ def snapshot_load(
         raise typer.Exit(code=1) from exc
 
     console.print(f"{OK} 已还原 [bold]{len(restored)}[/bold] 个配置目标。")
-    console.print(f"{OK} 已通过官方接口热重载 Niri、Noctalia 与 Kitty。")
+    # 只说「请求」：缺失的组件会被静默跳过，不能替它们宣称已经重载过
+    console.print(f"{OK} 已对可用的组件请求热重载 Niri / Noctalia / Kitty。")

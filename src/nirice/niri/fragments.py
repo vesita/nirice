@@ -65,8 +65,10 @@ layout {
         proportion 0.66667
     }
 
-    // 刻意不设置 default-column-width：保持 niri 原生行为（新窗口用应用首选宽度），
-    // 需要固定默认宽度时再自行取消注释：
+    // 不设置 default-column-width 时，niri 用内置默认值：新列占工作区一半。
+    // 实测在 1920x1080 / scale 1.25 下约等于 73 列 —— fastfetch 看板的宽度上限
+    // 就是按这个值定的（见 terminal/prompt.py 的 generate_fastfetch_config）。
+    // 想固定别的宽度时取消注释：
     // default-column-width { proportion 0.5; }
 
     struts {}

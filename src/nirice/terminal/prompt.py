@@ -276,7 +276,8 @@ def generate_fastfetch_config(palette: TerminalPalette) -> str:
             spec("uptime", "Uptime"),
             spec("wm", "WM", format="{2} ({3})"),
             spec("theme", "Theme"),
-            spec("icons", "Icons"),
+            # 刻意不列 icons：该模块要能读到 GTK 图标主题，本机只有 css、没有 settings.ini，
+            # fastfetch 会报 "No icons could be found" 并让整行消失。
             spec("terminal", "Term"),
             spec("terminalfont", "Font"),
             spec("cpu", "CPU", format="{1}"),

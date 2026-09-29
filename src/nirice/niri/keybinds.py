@@ -1,8 +1,8 @@
 """Niri 快捷键（binds 块）预设。
 
 niri 的 hotkey overlay **没有本地化**：文案硬编码在二进制里，没有翻译文件，
-设置 LANG 也无效。因此这里给每一条绑定都显式加上 `hotkey-overlay-title`，
-让 Mod+/ 弹出的快捷键总览完全显示中文。
+设置 LANG 也无效。因此除硬件功能键（用 `hotkey-overlay-title=null` 隐去）外，
+每条绑定都显式加上 `hotkey-overlay-title`，让 Mod+/ 弹出的总览完全显示中文。
 
 设计取舍：
 
@@ -29,7 +29,8 @@ KEYBINDS_KDL = """// ────────────── Niri 快捷键�
 // 参考：https://github.com/YaLTeR/niri/wiki/Configuration:-Key-Bindings
 // 手工修改本文件会被 `nirice niri apply` 覆盖；请改 nirice 预设或使用 --no-keybinds。
 //
-// 每条绑定都带 hotkey-overlay-title，因此 Mod+/ 弹出的快捷键总览是全中文的。
+// 除 11 条显式写 hotkey-overlay-title=null 的硬件键外，每条绑定都带中文标题，
+// 因此 Mod+/ 弹出的快捷键总览是纯中文的。
 //
 // 导航分工（不要合并）：
 //   Mod+← / →   跨列        Mod+↑ / ↓   跨工作区
