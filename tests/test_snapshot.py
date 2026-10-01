@@ -48,6 +48,43 @@ def test_snapshot_roundtrip(xdg: dict[str, Path], tmp_path: Path) -> None:
     assert any("kitty" in f for f in files)
 
 
+def test_dry_run_creates_nothing(xdg: dict[str, Path], tmp_path: Path, monkeypatch) -> None:
+    _seed(xdg)
+    manager = SnapshotManager(dry_run=True, home_dir=xdg["home"])
+
+    out = tmp_path / "nested" / "rice.pmz"
+    result = manager.create_snapshot(output_path=out, name="dry-run")
+    assert result == out
+    assert not out.exists()
+    assert not out.parent.exists()
+
+    # 默认输出路径同样不得创建 Path.cwd()/snapshots
+    workdir = tmp_path / "workdir"
+    workdir.mkdir()
+    monkeypatch.chdir(workdir)
+    default_out = manager.create_snapshot(name="dry-run-cwd")
+    assert default_out == workdir / "snapshots" / "dry-run-cwd.pmz"
+    assert not default_out.exists()
+    assert not (workdir / "snapshots").exists()
+
+
+def test_snapshot_excludes_backup_junk(xdg: dict[str, Path], tmp_path: Path) -> None:
+    _seed(xdg)
+    fcitx5 = xdg["config"] / "fcitx5"
+    fcitx5.mkdir(parents=True, exist_ok=True)
+    (fcitx5 / "theme.conf").write_text("keep me\n", encoding="utf-8")
+    (fcitx5 / "theme.conf.bak").write_text("drop me\n", encoding="utf-8")
+    (fcitx5 / "old.bak").mkdir()
+    (fcitx5 / "old.bak" / "inner.conf").write_text("drop me too\n", encoding="utf-8")
+
+    manager = SnapshotManager(dry_run=False, home_dir=xdg["home"])
+    archive = manager.create_snapshot(output_path=tmp_path / "rice.pmz", name="exclude-test")
+
+    files = manager.inspect_snapshot(archive)["files"]
+    assert "config/fcitx5/theme.conf" in files
+    assert not any(".bak" in f for f in files)
+
+
 def test_restore_into_fresh_home(xdg: dict[str, Path], tmp_path: Path) -> None:
     _seed(xdg)
     manager = SnapshotManager(dry_run=False, home_dir=xdg["home"])

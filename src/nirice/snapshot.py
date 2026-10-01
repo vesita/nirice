@@ -6,6 +6,7 @@ Niri 分片配置、Noctalia 设置（含状态栏位置与模板开关）、终
 
 from __future__ import annotations
 
+import fnmatch
 import io
 import json
 import os
@@ -50,6 +51,17 @@ TRACKED_TARGETS: list[tuple[str, str]] = [
     ("config", "mimeapps.list"),
     ("home", ".vscode/argv.json"),
 ]
+
+# 受管目录里可能混入编辑器/备份工具留下的杂物，打包时按 basename 排除
+EXCLUDE_PATTERNS = ("*.bak*",)
+
+
+def _exclude_member(member: tarfile.TarInfo) -> tarfile.TarInfo | None:
+    base = Path(member.name).name
+    if any(fnmatch.fnmatch(base, pattern) for pattern in EXCLUDE_PATTERNS):
+        return None
+    return member
+
 
 CATEGORY_ROOTS = {
     "config": "config",
@@ -101,11 +113,13 @@ class SnapshotManager:
         profile_name = name or f"niri_rice_{now.strftime('%Y%m%d_%H%M%S')}"
 
         if output_path is None:
-            output_dir = Path.cwd() / "snapshots"
-            output_dir.mkdir(parents=True, exist_ok=True)
-            output_path = output_dir / f"{profile_name}.pmz"
-        else:
-            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path = Path.cwd() / "snapshots" / f"{profile_name}.pmz"
+
+        # 干跑只回报本该写出的路径，不创建任何文件或目录
+        if self.dry_run:
+            return output_path
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
 
         metadata: dict[str, Any] = {
             "name": profile_name,
@@ -119,7 +133,7 @@ class SnapshotManager:
             for category, rel_path in TRACKED_TARGETS:
                 src = self._resolve_source(category, rel_path)
                 if src.exists():
-                    tar.add(src, arcname=f"{category}/{rel_path}", recursive=True)
+                    tar.add(src, arcname=f"{category}/{rel_path}", recursive=True, filter=_exclude_member)
 
             # 记录归档中的真实成员（目录目标会展开为多个文件）
             metadata["files"] = [name for name in tar.getnames() if name != "metadata.json"]

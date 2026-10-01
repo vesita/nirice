@@ -22,7 +22,10 @@ def snapshot_save(
 ) -> None:
     """把 Niri / Noctalia / 终端配置打包为便携快照。"""
     out_file = SnapshotManager(dry_run=dry_run).create_snapshot(output_path=output, name=name)
-    console.print(f"{OK} 快照打包成功: [bold cyan]{out_file}[/bold cyan]")
+    if dry_run:
+        console.print(f"{OK} 干跑：未写入任何文件；本应生成: [bold cyan]{out_file}[/bold cyan]")
+    else:
+        console.print(f"{OK} 快照打包成功: [bold cyan]{out_file}[/bold cyan]")
 
 
 @app.command("info")
