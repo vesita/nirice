@@ -2,6 +2,10 @@
 
 打包范围聚焦「换机后真正需要带走的东西」：
 Niri 分片配置、Noctalia 设置（含状态栏位置与模板开关）、终端与 Shell 配置。
+
+快照是会被拷到别的机器、也可能被分享的镜像，因此：
+打包与还原两侧都按基名过滤凭据/密钥/历史类文件（见 PRIVACY_EXCLUDE_PATTERNS），
+还原时拒绝绝对路径与 `..` 成员，元数据也不记录来源主机名。
 """
 
 from __future__ import annotations
@@ -11,12 +15,12 @@ import io
 import json
 import os
 import shutil
-import socket
 import tarfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from nirice import __version__
 from nirice.core import XDGPaths, pkill, run_quiet, which
 from nirice.system import DependencyHelper
 
@@ -52,15 +56,57 @@ TRACKED_TARGETS: list[tuple[str, str]] = [
     ("home", ".vscode/argv.json"),
 ]
 
-# 受管目录里可能混入编辑器/备份工具留下的杂物，打包时按 basename 排除
+# 受管目录里可能混入编辑器/备份工具留下的杂物
 EXCLUDE_PATTERNS = ("*.bak*",)
+
+# 凭据、登录态与密钥：快照是会被拷贝到别的机器、也可能被分享的镜像，
+# 这些文件默认永不入包；还原时同样过滤，避免来历不明的快照把它们写到本机。
+PRIVACY_EXCLUDE_PATTERNS = (
+    # 密钥与凭据
+    "id_*",
+    "*.pem",
+    "*.key",
+    "*.ppk",
+    "*.kdbx",
+    "*.token",
+    "*token*",
+    "*secret*",
+    "*credential*",
+    ".netrc",
+    ".git-credentials",
+    ".env",
+    ".env.*",
+    # 登录态与浏览数据
+    "*cookie*",
+    "*Login Data*",
+    "*.session",
+    "*.sqlite",
+    "*.sqlite3",
+    # Shell 与工具历史
+    "*history",
+    ".viminfo",
+    ".lesshst",
+    # 常见凭据目录
+    ".ssh",
+    ".gnupg",
+    ".aws",
+    ".password-store",
+)
+
+
+def _is_excluded(name: str) -> bool:
+    """归档成员名逐段比对杂物/隐私规则，命中即丢弃。"""
+    patterns = EXCLUDE_PATTERNS + PRIVACY_EXCLUDE_PATTERNS
+    for part in Path(name).parts:
+        if part in ("", ".", "..", "/"):
+            continue
+        if any(fnmatch.fnmatch(part, pattern) for pattern in patterns):
+            return True
+    return False
 
 
 def _exclude_member(member: tarfile.TarInfo) -> tarfile.TarInfo | None:
-    base = Path(member.name).name
-    if any(fnmatch.fnmatch(base, pattern) for pattern in EXCLUDE_PATTERNS):
-        return None
-    return member
+    return None if _is_excluded(member.name) else member
 
 
 CATEGORY_ROOTS = {
@@ -124,7 +170,7 @@ class SnapshotManager:
         metadata: dict[str, Any] = {
             "name": profile_name,
             "created_at": now.isoformat(),
-            "hostname": socket.gethostname(),
+            "generator": f"nirice {__version__}",
             "scope": "Niri + Noctalia Rice (niri config, noctalia settings, kitty & terminal configs)",
             "files": [],
         }
@@ -184,19 +230,30 @@ class SnapshotManager:
 
         with tarfile.open(snapshot_path, "r:gz") as tar:
             for member in tar.getmembers():
-                if member.name == "metadata.json":
+                # 还原侧同样过滤：快照可能来自别人，隐私文件不进本机。
+                if member.name == "metadata.json" or _is_excluded(member.name):
                     continue
-                parts = Path(member.name).parts
-                if not parts:
-                    continue
-                base = self._resolve_target(parts[0])
+                base = self._resolve_target(Path(member.name).parts[0]) if Path(member.name).parts else None
                 if base is None:
                     continue
-                self._extract_member(tar, member, base / Path(*parts[1:]), restored_items)
+                dest = self._safe_destination(member.name, base)
+                if dest is None:
+                    continue
+                self._extract_member(tar, member, dest, base, restored_items)
 
         if not self.dry_run:
             self.reload_components(wire_shell_hooks)
         return restored_items
+
+    def _safe_destination(self, member_name: str, base: Path) -> Path | None:
+        """把归档成员名映射回 XDG 根目录；绝对路径、`..` 与未知根一律拒绝。"""
+        rel = Path(member_name)
+        if rel.is_absolute():
+            return None
+        tail = rel.parts[1:]
+        if any(part in ("", "..") for part in tail):
+            return None
+        return base.joinpath(*tail)
 
     def _backup_current(self) -> None:
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -215,7 +272,14 @@ class SnapshotManager:
             except OSError:
                 continue
 
-    def _extract_member(self, tar: tarfile.TarFile, member: tarfile.TarInfo, dest: Path, restored: list[str]) -> None:
+    def _extract_member(
+        self, tar: tarfile.TarFile, member: tarfile.TarInfo, dest: Path, base: Path, restored: list[str]
+    ) -> None:
+        # 符号链接指向根目录之外的一律不建：否则后续成员可以顺着它写到 HOME 以外。
+        if member.issym():
+            target = Path(member.linkname)
+            if target.is_absolute() or not (dest.parent / target).resolve().is_relative_to(base.resolve()):
+                return
         restored.append(str(dest))
         if self.dry_run:
             return

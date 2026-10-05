@@ -211,6 +211,9 @@ def package_defs() -> list[PackageDef]:
             "brightnessctl", "硬件控制", "屏幕亮度调节", (has_bin("brightnessctl"),), "brightnessctl", essential=False
         ),
         PackageDef("playerctl", "媒体控制", "MPRIS 播放器控制", (has_bin("playerctl"),), "playerctl", essential=False),
+        PackageDef("grim", "截图", "Wayland 区域截屏后端", (has_bin("grim"),), "grim", essential=True),
+        PackageDef("slurp", "截图", "Wayland 区域框选", (has_bin("slurp"),), "slurp", essential=True),
+        PackageDef("satty", "截图", "截图标注（箭头 / 文字 / 涂改）", (has_bin("satty"),), "satty", essential=False),
         PackageDef(
             "networkmanager",
             "系统服务",

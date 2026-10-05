@@ -694,7 +694,7 @@ ls ~/.config | grep -iE 'kde|kwin|plasma' || echo "无 KDE 配置残留"
 
 ```bash
 # 安装（需要 uv：https://docs.astral.sh/uv/）
-uv tool install git+https://github.com/vesita/nirice
+uv tool install git+https://github.com/<owner>/nirice
 # 或在克隆后的仓库内
 uv run nirice --help
 ```

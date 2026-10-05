@@ -127,6 +127,12 @@ uv run nirice snapshot info snapshots/my-rice.pmz
 uv run nirice snapshot load snapshots/my-rice.pmz --install-deps
 ```
 
+`.pmz` 是 gzip 压缩的 tar，只装受管配置的文本文件。它是会被拷到别的机器、也可能被分享的镜像，因此：
+
+- **打包与还原两侧都过滤**凭据/密钥/历史类文件（`.ssh`、`.gnupg`、`id_*`、`*.pem`、`*.token`、`.netrc`、`.env`、`*history` 等）。
+- **还原侧拒绝**绝对路径与含 `..` 的成员，符号链接只允许指向 XDG 根之内 —— 加载别人的快照不会写到 HOME 之外。
+- **元数据不记录来源主机名**，只记生成工具与时间。
+
 ---
 
 ## ⌨️ 默认快捷键设计
@@ -161,6 +167,7 @@ uv run nirice snapshot load snapshots/my-rice.pmz --install-deps
 | 布局 | `Mod+W` | 标签式分组 |
 | 总览 | `Mod+Tab` | 工作区总览 |
 | 截图 | `Print` | 区域截图 |
+| 截图 | `Mod+Print` | 截图并标注 |
 
 键盘上的音量 / 亮度 / 媒体键照常生效，但用 `hotkey-overlay-title=null` 从 `Mod+/` 总览里隐去，因此不出现在上表 —— 硬件功能键不需要提示。
 
@@ -221,7 +228,7 @@ src/nirice/
 
 ```bash
 uv sync                  # 安装依赖（含 dev）
-uv run pytest            # 运行测试（59 项）
+uv run pytest            # 运行测试（80 项）
 uv run ruff check .      # 静态检查
 uv run ruff format .     # 代码格式化
 ```

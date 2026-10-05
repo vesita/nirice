@@ -4,7 +4,7 @@ version = "0.2.0"
 description = "Niri + Noctalia Wayland desktop rice, terminal theming & cross-machine migration toolkit"
 readme = "README.md"
 authors = [
-    { name = "vesita", email = "vesita164872@outlook.com" }
+    { name = "nirice contributors" }
 ]
 requires-python = ">=3.12"
 dependencies = [

@@ -5,10 +5,26 @@ from __future__ import annotations
 from pathlib import Path
 
 from nirice.system import MigrationPlanner
+from nirice.system import installer as installer_module
 from nirice.system.kde_data import KDE_CONFIG_FILES
 
 
-def test_plan_has_expected_phases(xdg: dict[str, Path]) -> None:
+def test_plan_has_expected_phases(xdg: dict[str, Path], monkeypatch) -> None:
+    # 「缺失组件」这一步只在真有组件缺失时才生成。测试不能依赖宿主机装没装
+    # noctalia / gnome-keyring —— 那样同一份代码在不同机器上会给出不同结果。
+    # 这里强制一个必需组件探测失败，让阶段 1 的出现变成确定性的。
+    original = installer_module.DependencyHelper.package_defs
+
+    def defs_with_one_missing(self):
+        defs = original(self)
+        for definition in defs:
+            if definition.essential:
+                definition.probes = (lambda: False,)
+                break
+        return defs
+
+    monkeypatch.setattr(installer_module.DependencyHelper, "package_defs", defs_with_one_missing)
+
     plan = MigrationPlanner(home_dir=xdg["home"]).build_plan()
     phases = list(plan.grouped())
 

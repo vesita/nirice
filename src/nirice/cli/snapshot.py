@@ -41,7 +41,7 @@ def snapshot_info(archive: Path = typer.Argument(..., help=".pmz 快照路径"))
         Panel.fit(
             f"[bold cyan]名称:[/] {data.get('name', '未知')}\n"
             f"[bold cyan]打包时间:[/] {data.get('created_at', '未知')}\n"
-            f"[bold cyan]来源主机:[/] {data.get('hostname', '未知')}\n"
+            f"[bold cyan]生成工具:[/] {data.get('generator', '未知')}\n"
             f"[bold cyan]范围:[/] {data.get('scope', '-')}\n"
             f"[bold cyan]包含目标数:[/] {len(data.get('files', []))}",
             title=f"快照: {archive.name}",

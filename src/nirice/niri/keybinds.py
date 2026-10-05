@@ -25,7 +25,7 @@ from __future__ import annotations
 # 说明：niri 一个快捷键只允许一个动作；多步操作需用 spawn-sh 串联 `niri msg action`。
 # 注意：修饰键顺序无意义 —— Mod+Ctrl+X 与 Ctrl+Mod+X 是同一个键，
 #       新增绑定后务必运行 `nirice niri check`，niri validate 会直接报出重复绑定。
-KEYBINDS_KDL = """// ────────────── Niri 快捷键（由 nirice 管理）──────────────
+KEYBINDS_KDL = r"""// ────────────── Niri 快捷键（由 nirice 管理）──────────────
 // 参考：https://github.com/YaLTeR/niri/wiki/Configuration:-Key-Bindings
 // 手工修改本文件会被 `nirice niri apply` 覆盖；请改 nirice 预设或使用 --no-keybinds。
 //
@@ -81,9 +81,12 @@ binds {
     Mod+Tab                       repeat=false hotkey-overlay-title="工作区总览" { toggle-overview; }
 
     // ─── 截图 ───
+    // Print 走 niri 原生截图（screenshot-path null ⇒ 直接进剪贴板），不依赖外部程序。
+    // Mod+Print 走 grim + slurp + satty 标注链路，落盘到 XDG 图片目录下的 Screenshots/。
     Print                         hotkey-overlay-title="区域截图" { screenshot; }
     Ctrl+Print                    hotkey-overlay-title=null { screenshot-screen; }
     Alt+Print                     hotkey-overlay-title=null { screenshot-window; }
+    Mod+Print                     repeat=false hotkey-overlay-title="截图并标注" { spawn-sh "d=$(xdg-user-dir PICTURES 2>/dev/null || echo $HOME/Pictures); mkdir -p \"$d/Screenshots\" || exit 0; g=$(slurp) || exit 0; [ -n \"$g\" ] || exit 0; grim -g \"$g\" - | satty --filename - --output-filename \"$d/Screenshots/Screenshot_$(date +%F_%H-%M-%S).png\""; }
 
     // ─── 媒体与亮度（XF86 硬件键）───
     // 这些是键盘上的硬件功能键：照常生效，但用 hotkey-overlay-title=null 从

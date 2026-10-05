@@ -2,9 +2,21 @@
 
 from __future__ import annotations
 
+import io
+import tarfile
 from pathlib import Path
 
 from nirice.snapshot import TRACKED_TARGETS, SnapshotManager
+
+
+def _write_tar(archive: Path, entries: dict[str, bytes]) -> Path:
+    """按给定成员名手工造一个快照，用于验证还原侧的防御。"""
+    with tarfile.open(archive, "w:gz") as tar:
+        for name, payload in entries.items():
+            info = tarfile.TarInfo(name)
+            info.size = len(payload)
+            tar.addfile(info, io.BytesIO(payload))
+    return archive
 
 
 def _seed(xdg: dict[str, Path]) -> None:
@@ -120,3 +132,99 @@ def test_inspect_missing_snapshot_raises(xdg: dict[str, Path], tmp_path: Path) -
     manager = SnapshotManager(dry_run=False, home_dir=xdg["home"])
     with pytest.raises(FileNotFoundError):
         manager.inspect_snapshot(tmp_path / "does-not-exist.pmz")
+
+
+def test_snapshot_excludes_privacy_files(xdg: dict[str, Path], tmp_path: Path) -> None:
+    """受管目录里混进的密钥/凭据/历史不得进包。"""
+    _seed(xdg)
+    scripts = xdg["config"] / "niri" / "scripts"
+    scripts.mkdir(parents=True, exist_ok=True)
+    (scripts / "id_ed25519").write_text("PRIVATE KEY\n", encoding="utf-8")
+    kitty = xdg["config"] / "kitty"
+    (kitty / ".netrc").write_text("machine x password y\n", encoding="utf-8")
+    (kitty / "api.token").write_text("tok\n", encoding="utf-8")
+    conf_d = xdg["config"] / "fish" / "conf.d"
+    conf_d.mkdir(parents=True, exist_ok=True)
+    (conf_d / "credentials").write_text("user=root\n", encoding="utf-8")
+
+    manager = SnapshotManager(dry_run=False, home_dir=xdg["home"])
+    archive = manager.create_snapshot(output_path=tmp_path / "privacy.pmz", name="privacy")
+    files = manager.inspect_snapshot(archive)["files"]
+
+    assert "config/kitty/kitty.conf" in files
+    assert "config/niri/config.kdl" in files
+    for leaked in ("id_ed25519", ".netrc", "api.token", "credentials"):
+        assert not any(leaked in name for name in files), leaked
+
+
+def test_snapshot_metadata_has_no_machine_identity(xdg: dict[str, Path], tmp_path: Path) -> None:
+    """快照会被跨机器拷贝与分享，元数据不记录来源主机名。"""
+    _seed(xdg)
+    manager = SnapshotManager(dry_run=False, home_dir=xdg["home"])
+    archive = manager.create_snapshot(output_path=tmp_path / "meta.pmz", name="meta")
+
+    info = manager.inspect_snapshot(archive)
+    assert "hostname" not in info
+    assert info["generator"].startswith("nirice ")
+
+
+def test_restore_rejects_path_traversal(xdg: dict[str, Path], tmp_path: Path) -> None:
+    """绝对路径与 `..` 成员必须被拒绝，合法成员照常还原。"""
+    archive = _write_tar(
+        tmp_path / "evil.pmz",
+        {
+            "config/../pwned.txt": b"pwn",
+            "config/niri/../../pwned2.txt": b"pwn",
+            "/tmp/pwned3.txt": b"pwn",
+            "config/niri/ok.kdl": b"binds {\n}\n",
+        },
+    )
+    manager = SnapshotManager(dry_run=False, home_dir=xdg["home"])
+    restored = manager.restore_snapshot(archive, create_backup=False, wire_shell_hooks=False)
+
+    assert (xdg["config"] / "niri" / "ok.kdl").exists()
+    assert not (xdg["config"].parent / "pwned.txt").exists()
+    assert not (xdg["home"] / "pwned2.txt").exists()
+    assert not Path("/tmp/pwned3.txt").exists()
+    assert all("pwned" not in item for item in restored)
+
+
+def test_restore_filters_privacy_files(xdg: dict[str, Path], tmp_path: Path) -> None:
+    """来历不明的快照不得把凭据写到本机。"""
+    archive = _write_tar(
+        tmp_path / "incoming.pmz",
+        {
+            "config/kitty/kitty.conf": b"ok\n",
+            "config/kitty/.netrc": b"secret\n",
+            "config/niri/scripts/id_ed25519": b"key\n",
+        },
+    )
+    manager = SnapshotManager(dry_run=False, home_dir=xdg["home"])
+    manager.restore_snapshot(archive, create_backup=False, wire_shell_hooks=False)
+
+    assert (xdg["config"] / "kitty" / "kitty.conf").read_text(encoding="utf-8") == "ok\n"
+    assert not (xdg["config"] / "kitty" / ".netrc").exists()
+    assert not (xdg["config"] / "niri" / "scripts" / "id_ed25519").exists()
+
+
+def test_restore_symlink_must_stay_inside_root(xdg: dict[str, Path], tmp_path: Path) -> None:
+    """指向 XDG 根之外（含绝对路径）的符号链接不建，根内的照常建。"""
+    archive = tmp_path / "links.pmz"
+    with tarfile.open(archive, "w:gz") as tar:
+        for name, linkname in (
+            ("config/niri/evil", "/etc"),
+            ("config/niri/up", "../../.."),
+            ("config/niri/good", "config.kdl"),
+        ):
+            info = tarfile.TarInfo(name)
+            info.type = tarfile.SYMTYPE
+            info.linkname = linkname
+            tar.addfile(info)
+
+    manager = SnapshotManager(dry_run=False, home_dir=xdg["home"])
+    manager.restore_snapshot(archive, create_backup=False, wire_shell_hooks=False)
+
+    assert not (xdg["config"] / "niri" / "evil").exists()
+    assert not (xdg["config"] / "niri" / "up").exists()
+    good = xdg["config"] / "niri" / "good"
+    assert good.is_symlink() and good.readlink() == Path("config.kdl")

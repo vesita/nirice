@@ -66,8 +66,6 @@ layout {
     }
 
     // 不设置 default-column-width 时，niri 用内置默认值：新列占工作区一半。
-    // 实测在 1920x1080 / scale 1.25 下约等于 73 列 —— fastfetch 看板的宽度上限
-    // 就是按这个值定的（见 terminal/prompt.py 的 generate_fastfetch_config）。
     // 想固定别的宽度时取消注释：
     // default-column-width { proportion 0.5; }
 
@@ -188,9 +186,9 @@ DISPLAY_KDL = """// ────────────── 显示器输出�
 // 运行 `niri msg outputs` 获取正确的显示器名称，然后取消注释并修改。
 // https://github.com/YaLTeR/niri/wiki/Configuration:-Outputs
 
-// output "eDP-1" {
-//     mode "1920x1080@60.000"
-//     scale 1.25
+// output "<显示器名>" {
+//     mode "<宽>x<高>@<刷新率>"
+//     scale <缩放倍数>
 //     transform "normal"
 // }
 """
