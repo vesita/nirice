@@ -2,7 +2,7 @@
 
 **nirice** 是面向 **CachyOS / Arch Linux + Niri (Wayland) + Noctalia** 的桌面美化（Rice）与配置管理工具箱：Niri 合成器配置、Noctalia 外壳主题联动、终端与 Shell 生态、跨机器迁移，全部收在一条 CLI 里。
 
-> 名字来源于 **niri + rice**。项目早期基于 KDE Plasma，现已**彻底移除全部 KDE / KWin / Plasma 代码**。
+> 名字来源于 **niri + rice**。
 
 ---
 
@@ -31,7 +31,7 @@
    状态栏位置切换、内置配色与明暗模式、面板开关，以及**主题模板编排** —— 一条命令让 kitty / starship / niri / GTK3 / GTK4 / alacritty 的配色随外壳主题自动渲染。
 
 3. **💻 终端与 Shell 生态（`nirice terminal`）**
-   Kitty 美学层（MesloLGS Nerd Font + 0.78 磨砂透明 + 圆角药丸 Tab + 分屏快捷键）、Starship 胶囊提示符布局、Fastfetch 看板；Alacritty / Ghostty / Foot / WezTerm / Zellij 优先交给 Noctalia 模板，Noctalia 缺席时自动回退到内置调色板（18 套，含 Nord / Catppuccin / Tokyo Night / Dracula / Gruvbox / Solarized）。
+   Kitty 美学层（MesloLGS Nerd Font + 0.78 磨砂透明 + 圆角药丸 Tab + 分屏快捷键）、Starship 胶囊提示符布局、Fastfetch 看板；Alacritty / Ghostty / Foot / WezTerm / Zellij 优先交给 Noctalia 模板，Noctalia 缺席时自动回退到内置调色板（19 套，含 Nord / Catppuccin / Tokyo Night / Dracula / Gruvbox / Solarized）。
 
 4. **📦 跨机器打包与还原（`nirice snapshot`）**
    把 Niri 分片、Noctalia 设置（含状态栏位置与模板开关）、终端与 Shell 配置打成单一 `.pmz`，在新机器上 `--install-deps` 一键补齐依赖并还原，随后自动热重载 Niri / Noctalia / Kitty。
@@ -118,8 +118,6 @@ uv run nirice migrate clean-configs           # 归档 KDE 残留配置（可逆
 uv run nirice migrate report -o MIGRATION.md  # 导出迁移报告
 ```
 
-> 面向「原生 KDE 中途转 Niri」机器的完整操作指引见 [KDE-TO-NIRI-PROMPT.md](KDE-TO-NIRI-PROMPT.md)。
-
 ### 快照
 ```bash
 uv run nirice snapshot save --name my-rice
@@ -180,8 +178,10 @@ uv run nirice snapshot load snapshots/my-rice.pmz --install-deps
 
 ```
 src/nirice/
-├── cli/                    # 命令行界面（按领域拆分，单文件均 < 250 行）
+├── __main__.py             # python -m nirice 入口
+├── cli/                    # 命令行界面（按领域拆分）
 │   ├── app.py              #   根 Typer 应用
+│   ├── common.py           #   控制台输出与公共选项
 │   ├── env.py              #   status / doctor / install
 │   ├── niri.py             #   niri 子命令
 │   ├── shell.py            #   shell / bar / templates 子命令
@@ -206,6 +206,7 @@ src/nirice/
 │   ├── palettes.py         #   TerminalPalette 数据结构与色彩工具
 │   ├── palettes_light.py   #   浅色调色板
 │   ├── palettes_dark.py    #   暗色调色板
+│   ├── palettes_extra.py   #   追加调色板
 │   ├── catalog.py          #   调色板注册表
 │   ├── kitty.py            #   Kitty 美学层与回退配色渲染
 │   ├── backends.py         #   Alacritty / Ghostty / Foot / WezTerm / Zellij
