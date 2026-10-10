@@ -194,6 +194,9 @@ $character
 
 command_timeout = 800
 
+# 目录扫描预算（默认 30ms）在大目录/慢盘上会被截断，语言模块会整个不显示。
+scan_timeout = 100
+
 [directory]
 style = "fg:{ink} bg:{pill} bold"
 format = "[]({pill})[ 󰣇 ](fg:{ink} bg:{pill} bold)[│](fg:{divider} bg:{pill})[ $path ]($style)"

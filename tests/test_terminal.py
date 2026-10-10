@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from nirice.noctalia import NoctaliaController
@@ -166,6 +167,14 @@ def test_starship_uses_palette_indirection() -> None:
     assert 'palette = "noctalia"' in external
     assert "[palettes.nirice]" not in external
     assert f"bg:{CAPSULE_PRESETS[DEFAULT_CAPSULE].pill}" in external
+
+
+def test_starship_scan_timeout_beats_the_default() -> None:
+    """回归：默认 30ms 的目录扫描预算在慢盘上会被截断，语言模块会整个不显示。"""
+    cfg = generate_starship_config(TERMINAL_PALETTES["nord-light"], use_noctalia_palette=True)
+    match = re.search(r"^scan_timeout = (\d+)$", cfg, re.MULTILINE)
+    assert match is not None, "生成的 starship 配置缺少 scan_timeout"
+    assert int(match.group(1)) > 30
 
 
 def test_capsule_pill_is_not_the_terminal_background() -> None:
