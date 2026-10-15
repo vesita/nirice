@@ -1,0 +1,246 @@
+"""Kitty 终端主题预设。
+
+职责边界（重要）：
+- **配色** 交给 Noctalia 的官方 `kitty` 模板自动生成到 `themes/noctalia.conf`，
+  随外壳主题/壁纸联动，无需手工维护色值。
+- **美学**（字体、磨砂、Tab 样式、快捷键）由 nirice 维护到 `nirice.conf`，
+  与配色解耦：切换主题不会丢失终端手感。
+- Noctalia 缺失时，nirice 回退到自带的调色板文件 `nirice-theme.conf`。
+"""
+
+from __future__ import annotations
+
+from nirice.terminal.palettes import TerminalPalette
+
+# Noctalia 自动生成的配色文件（由 noctalia kitty 模板负责写入）
+NOCTALIA_THEME_REL = "themes/noctalia.conf"
+# nirice 自己维护的美学文件
+NIRICE_AESTHETIC_REL = "nirice.conf"
+# 无 Noctalia 时的回退配色文件
+NIRICE_FALLBACK_THEME_REL = "nirice-theme.conf"
+
+
+# ==============================================================================
+# 1. 美学层（不含任何颜色，可安全与 Noctalia 配色叠加）
+# ==============================================================================
+
+KITTY_AESTHETIC_CONF = """# Kitty aesthetics — managed by nirice
+# 只包含排版、磨砂、Tab 与快捷键；配色由 include 的配色文件提供。
+# 修改后运行 `nirice terminal set-kitty <palette>` 会被覆盖。
+
+# ────────────── 字体与排版 ──────────────
+# 必须显式指定终端字体。kitty 的默认值 font_family=monospace 在 CachyOS 上
+# 会落到 Noto Sans Mono CJK：它的拉丁字形按 CJK 字体的半宽设计，
+# ASCII 步进只有 0.500em（MesloLGS 是 0.602em），笔画偏细、字面偏小，
+# 于是整屏文字显得又挤又不匀 —— 这就是"字距不合理"的来源。
+#
+# 用 Mono 变体：Nerd Fonts 官方推荐在终端里使用 Mono，
+# 它把图标也强制成单格宽，胶囊提示符里的图标才能和文字对齐。
+font_family      MesloLGS Nerd Font Mono
+bold_font        auto
+italic_font      auto
+bold_italic_font auto
+font_size        11.5
+#
+# ⚠️ 不要重复写 font_family 来做回退！kitty 的 font_family 是单个 FontSpec，
+#    多行时**只有最后一行生效**，写了 CJK 回退反而会把主字体换成 CJK 字体。
+#    kitty 对缺失字形（汉字、Emoji）会自动通过 fontconfig 回退，无需手写。
+
+# ────────────── 字距与行距（kitty 0.49+ 的新写法）──────────────
+# 注意：kitty 没有 letter_spacing 选项，横向字距的唯一旋钮就是 cell_width。
+#   cell_width 100%   → 使用字体原生步进（默认，推荐起点）
+#   cell_width 96%    → 更紧凑
+#   cell_width 105%   → 更疏朗
+#   cell_height 105%  → 行距略放松，长时间阅读更舒服
+modify_font cell_width 100%
+modify_font cell_height 105%
+disable_ligatures never
+
+# 图标锁定主字体，避免 CJK 回退字体抢走 Nerd Font 码位。
+symbol_map U+E000-U+F8FF,U+F0000-U+FFFFD,U+100000-U+10FFFD MesloLGS Nerd Font Mono
+
+# ────────────── 窗口与磨砂毛玻璃 ──────────────
+# 透明度由 kitty 负责；背景模糊由 niri 的 window-rule background-effect 完成
+# （kitty 的 background_blur 仅在 macOS 生效，Linux 上请勿依赖）。
+background_opacity 0.78
+dynamic_background_opacity yes
+window_padding_width 8
+window_margin_width 0
+hide_window_decorations yes
+confirm_os_window_close 0
+remember_window_size yes
+initial_window_width 110c
+initial_window_height 32c
+placement_strategy center
+
+# ────────────── 光标 ──────────────
+cursor_shape beam
+cursor_beam_thickness 1.8
+cursor_blink_interval 0.5
+cursor_stop_blinking_after 15.0
+
+# ────────────── 滚动与缓冲 ──────────────
+scrollback_lines 10000
+wheel_scroll_multiplier 5.0
+touch_scroll_multiplier 1.0
+copy_on_select no
+strip_trailing_spaces smart
+mouse_hide_wait 3.0
+focus_follows_mouse no
+
+# ────────────── 顶部圆角药丸 Tab ──────────────
+tab_bar_edge top
+tab_bar_style powerline
+tab_powerline_style round
+tab_bar_min_tabs 1
+tab_bar_margin_width 6.0
+tab_bar_margin_height 6.0 0.0
+tab_title_template " {index}: {title} "
+active_tab_font_style bold
+inactive_tab_font_style normal
+tab_bar_align left
+
+# ────────────── 链接与提示 ──────────────
+url_style curly
+detect_urls yes
+underline_hyperlinks hover
+enable_audio_bell no
+window_alert_on_bell yes
+
+# ────────────── 渲染性能 ──────────────
+repaint_delay 8
+input_delay 2
+sync_to_monitor yes
+allow_remote_control socket-only
+
+# ────────────── 快捷键 ──────────────
+# Tab 管理
+map ctrl+shift+t new_tab
+map ctrl+shift+w close_tab
+map ctrl+shift+right next_tab
+map ctrl+shift+left previous_tab
+map ctrl+shift+1 goto_tab 1
+map ctrl+shift+2 goto_tab 2
+map ctrl+shift+3 goto_tab 3
+map ctrl+shift+4 goto_tab 4
+map ctrl+shift+5 goto_tab 5
+
+# 分屏
+map ctrl+shift+enter new_window_with_cwd
+map ctrl+shift+] next_window
+map ctrl+shift+[ previous_window
+map ctrl+shift+h neighboring_window left
+map ctrl+shift+l neighboring_window right
+map ctrl+shift+k neighboring_window up
+map ctrl+shift+j neighboring_window down
+map ctrl+shift+z toggle_layout stack
+
+# 实时透明度（磨砂玻璃手感微调）
+map ctrl+shift+u set_background_opacity +0.05
+map ctrl+shift+o set_background_opacity -0.05
+map ctrl+shift+delete set_background_opacity default
+"""
+
+
+# ==============================================================================
+# 2. 主配置壳（只负责 include 顺序）
+# ==============================================================================
+
+# 注意：`include themes/noctalia.conf` 必须与 Noctalia 模板生成的路径逐字一致，
+# 否则 Noctalia 会再追加一行造成重复 include。
+KITTY_CONF_NOCTALIA = f"""# Kitty main configuration — managed by nirice
+# 顺序：先加载 nirice 美学，再加载配色（配色后加载以保证覆盖优先级）。
+include {NIRICE_AESTHETIC_REL}
+include {NOCTALIA_THEME_REL}
+"""
+
+KITTY_CONF_FALLBACK = f"""# Kitty main configuration — managed by nirice
+# 未检测到 Noctalia，使用 nirice 自带调色板。
+include {NIRICE_AESTHETIC_REL}
+include {NIRICE_FALLBACK_THEME_REL}
+"""
+
+
+# ==============================================================================
+# 3. 回退色彩层（仅当 Noctalia 不可用时使用）
+# ==============================================================================
+
+KITTY_THEME_TEMPLATE = """# Kitty theme — {display_name} ({name})
+# Generated by nirice as a fallback (Noctalia not available).
+
+background            {background}
+foreground            {foreground}
+selection_background  {selection_bg}
+selection_foreground  {selection_fg}
+cursor                {cursor}
+cursor_text_color     {cursor_text}
+
+color0  {black}
+color1  {red}
+color2  {green}
+color3  {yellow}
+color4  {blue}
+color5  {magenta}
+color6  {cyan}
+color7  {white}
+color8  {bright_black}
+color9  {bright_red}
+color10 {bright_green}
+color11 {bright_yellow}
+color12 {bright_blue}
+color13 {bright_magenta}
+color14 {bright_cyan}
+color15 {bright_white}
+
+active_tab_background   {blue}
+active_tab_foreground   #FFFFFF
+inactive_tab_background {selection_bg}
+inactive_tab_foreground {dim_foreground}
+tab_bar_background      {background}
+tab_bar_margin_color    {background}
+
+active_border_color   {blue}
+inactive_border_color {selection_bg}
+url_color             {bright_cyan}
+"""
+
+
+def render_kitty_conf(use_noctalia: bool) -> str:
+    """渲染 kitty.conf 主壳。"""
+    return KITTY_CONF_NOCTALIA if use_noctalia else KITTY_CONF_FALLBACK
+
+
+def render_kitty_aesthetics() -> str:
+    """渲染美学层配置。"""
+    return KITTY_AESTHETIC_CONF
+
+
+def render_kitty_theme(palette: TerminalPalette) -> str:
+    """渲染回退配色文件。"""
+    return KITTY_THEME_TEMPLATE.format(
+        name=palette.name,
+        display_name=palette.display_name,
+        background=palette.background,
+        foreground=palette.foreground,
+        selection_bg=palette.selection_bg,
+        selection_fg=palette.selection_fg,
+        cursor=palette.cursor,
+        cursor_text=palette.cursor_text,
+        black=palette.black,
+        red=palette.red,
+        green=palette.green,
+        yellow=palette.yellow,
+        blue=palette.blue,
+        magenta=palette.magenta,
+        cyan=palette.cyan,
+        white=palette.white,
+        bright_black=palette.bright_black,
+        bright_red=palette.bright_red,
+        bright_green=palette.bright_green,
+        bright_yellow=palette.bright_yellow,
+        bright_blue=palette.bright_blue,
+        bright_magenta=palette.bright_magenta,
+        bright_cyan=palette.bright_cyan,
+        bright_white=palette.bright_white,
+        dim_foreground=palette.dim_foreground or palette.bright_black,
+    )

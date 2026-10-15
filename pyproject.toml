@@ -1,0 +1,42 @@
+[project]
+name = "nirice"
+version = "0.2.0"
+description = "Niri + Noctalia Wayland desktop rice, terminal theming & cross-machine migration toolkit"
+readme = "README.md"
+authors = [
+    { name = "nirice contributors" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "rich>=15.0.0",
+    "typer>=0.27.2",
+]
+
+[project.scripts]
+nirice = "nirice.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.14.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.1,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = [
+    "E501",  # 行长由 ruff format 负责
+    "B008",  # typer.Option/Option 作为默认参数是 Typer 的标准写法
+]

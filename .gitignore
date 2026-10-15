@@ -1,0 +1,16 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments & test caches
+.venv/
+.pytest_cache/
+
+# Snapshots and backup bundles (ignored for git tracking)
+snapshots/
+*.pmz
+*.tar.gz
