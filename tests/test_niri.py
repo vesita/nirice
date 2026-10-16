@@ -212,14 +212,25 @@ def test_misc_environment_carries_tern_session_vars() -> None:
     """misc.kdl 的 environment 块是 niri 会话里这些变量的唯一来源。
 
     它只作用于 niri spawn 的子进程，所以少一行不会报错，只会让某个程序静默用错后端。
-    STENCIL_DISPLAY_SERVER 决定 Tern 走 X11 还是 Wayland，XIM（XMODIFIERS）只在 X11 下生效。
     """
     block = MANAGED_FRAGMENTS["misc.kdl"].split("environment {", 1)[1].split("}", 1)[0]
     pairs = dict(re.findall(r'^\s*(\w+)\s+"([^"]*)"', block, re.MULTILINE))
 
-    assert pairs.get("STENCIL_DISPLAY_SERVER") == "x11"
     assert pairs.get("XMODIFIERS") == "@im=fcitx"
     assert pairs.get("TERMINAL") == "tern"
+
+
+def test_misc_environment_does_not_force_x11() -> None:
+    """不得设 STENCIL_DISPLAY_SERVER，Tern 必须走原生 Wayland。
+
+    定成 x11 时 Tern 经 xwayland-satellite，其 XInput 请求与窗口销毁竞态返回 BadWindow，
+    GDK 视之为致命错误，窗口一开就闪退（实测 3/3 复现）。这里比的是「有没有这一行」，
+    不是值——写成 wayland 也能存活，但显式指定没有意义，缺省即 Wayland。
+    """
+    block = MANAGED_FRAGMENTS["misc.kdl"].split("environment {", 1)[1].split("}", 1)[0]
+    active = [ln.strip() for ln in block.splitlines() if ln.strip().startswith("STENCIL_DISPLAY_SERVER")]
+
+    assert not active, f"misc.kdl 不应设 STENCIL_DISPLAY_SERVER，Tern 会闪退: {active}"
 
 
 def test_misc_environment_passes_real_niri_validate(tmp_path: Path) -> None:
