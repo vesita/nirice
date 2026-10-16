@@ -208,6 +208,36 @@ def test_every_keybind_has_a_chinese_overlay_title() -> None:
     assert not missing, f"以下绑定缺少中文标题，overlay 会显示英文: {missing}"
 
 
+def test_misc_environment_carries_tern_session_vars() -> None:
+    """misc.kdl 的 environment 块是 niri 会话里这些变量的唯一来源。
+
+    它只作用于 niri spawn 的子进程，所以少一行不会报错，只会让某个程序静默用错后端。
+    STENCIL_DISPLAY_SERVER 决定 Tern 走 X11 还是 Wayland，XIM（XMODIFIERS）只在 X11 下生效。
+    """
+    block = MANAGED_FRAGMENTS["misc.kdl"].split("environment {", 1)[1].split("}", 1)[0]
+    pairs = dict(re.findall(r'^\s*(\w+)\s+"([^"]*)"', block, re.MULTILINE))
+
+    assert pairs.get("STENCIL_DISPLAY_SERVER") == "x11"
+    assert pairs.get("XMODIFIERS") == "@im=fcitx"
+    assert pairs.get("TERMINAL") == "tern"
+
+
+def test_misc_environment_passes_real_niri_validate(tmp_path: Path) -> None:
+    """整份 misc.kdl 交给 niri 解析，防止 environment 块被写出语法错误。"""
+    if shutil.which("niri") is None:
+        pytest.skip("需要已安装 niri 才能做真实语法校验")
+    config = tmp_path / "config.kdl"
+    config.write_text(MANAGED_FRAGMENTS["misc.kdl"], encoding="utf-8")
+
+    result = subprocess.run(
+        ["niri", "validate", "-c", str(config)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout
+
+
 def test_default_column_width_is_not_forced() -> None:
     """刻意不设置 default-column-width，保持 niri 原生开窗宽度。"""
     layout = MANAGED_FRAGMENTS["layout.kdl"]

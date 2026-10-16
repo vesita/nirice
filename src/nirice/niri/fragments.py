@@ -86,6 +86,16 @@ environment {
     QT_WAYLAND_DISABLE_WINDOWDECORATION "1"
     XDG_CURRENT_DESKTOP "niri"
     XDG_SESSION_TYPE "wayland"
+    // 默认终端：供读取 $TERMINAL 的程序（xdg-terminal-exec、部分文件管理器 / TUI）使用
+    TERMINAL "tern"
+    // Tern 的显示后端：X11 路径下才有 XIM，输入法变量（XMODIFIERS）要靠它生效
+    STENCIL_DISPLAY_SERVER "x11"
+    // 输入法：GTK/Qt/SDL/GLFW 应用统一走 fcitx5（GTK_IM_MODULE 依赖 fcitx5-gtk）
+    XMODIFIERS "@im=fcitx"
+    GTK_IM_MODULE "fcitx"
+    QT_IM_MODULE "fcitx"
+    SDL_IM_MODULE "fcitx"
+    GLFW_IM_MODULE "ibus"
 }
 
 cursor {
