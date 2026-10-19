@@ -98,7 +98,7 @@ def test_keybinds_meet_user_requirements() -> None:
     binds = MANAGED_FRAGMENTS["keybinds.kdl"]
     actions = _binding_actions(binds)
 
-    assert "Mod+T" in binds and 'spawn "tern"' in binds
+    assert "Mod+T" in binds and 'spawn "tern-guard"' in binds
     assert "Mod+Q" in binds and "close-window" in binds
     # Mod+R 循环预设列宽，最后一档是全宽（等效最大化）
     assert actions["Mod+R"] == "switch-preset-column-width"

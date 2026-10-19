@@ -50,8 +50,9 @@ binds {
     Mod+P                         hotkey-overlay-title="浮动 / 平铺切换" { toggle-window-floating; }
 
     // ─── 应用启动 ───
-    // Mod+T 打开 Tern（本机默认终端）。
-    Mod+T                         repeat=false hotkey-overlay-title="打开终端" { spawn "tern"; }
+    // Mod+T 打开 Tern（本机默认终端）。经 tern-guard 启动：客户端若在窗口建出后自行退出，
+    // 守卫重试最多 3 次，并把每次尝试的退出码与 stderr 写进 ~/.local/state/tern/launch-guard.log。
+    Mod+T                         repeat=false hotkey-overlay-title="打开终端" { spawn "tern-guard"; }
     Mod+D                         repeat=false hotkey-overlay-title="打开应用启动器" { spawn-sh "noctalia msg panel-toggle launcher"; }
     Mod+B                         repeat=false hotkey-overlay-title="打开浏览器" { spawn "firefox"; }
     Mod+E                         repeat=false hotkey-overlay-title="打开文件管理器" { spawn "nautilus"; }
